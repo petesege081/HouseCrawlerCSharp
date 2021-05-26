@@ -27,12 +27,12 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 				
 		protected override void WaitForPageLoaded()
 		{
-			//Waiting for loading dialog disappear
+			//頁面切換完成表示已載入資料
+			Waiter.Until(ExpectedConditions.ElementIsVisible(By.CssSelector(".pages .pageCurrent")));
 			Waiter.Until(cond => {
-				return Driver.FindElement(By.CssSelector("#j-loading")).Displayed;
-			});
-			Waiter.Until(cond => {
-				return !Driver.FindElement(By.CssSelector("#j-loading")).Displayed;
+				var index = int.Parse(Driver.FindElement(By.CssSelector(".pages .pageCurrent")).Text);
+
+				return index != PageIndex;
 			});
 		}
 
@@ -42,15 +42,12 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 			var items = Driver.FindElements(By.CssSelector(".house-switch div"));
 			foreach (var item in items)
 			{
-				var inn = item.GetAttribute("class");
 				if (item.GetAttribute("class") == "tips-popbox-shadow" && item.Displayed)
 				{
-					//Waiter.Until(ExpectedConditions.ElementToBeClickable(By.CssSelector(".tips-popbox-shadow")));
 					item.Click();
 					break;
 				}
 			}
-
 
 			//處理無資料的情況
 			if(Driver.FindElement(By.CssSelector(".noHouse-tips")).Displayed)

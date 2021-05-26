@@ -1,9 +1,11 @@
 ﻿using HouseCrawlerCSharp.Library;
 using HouseCrawlerCSharp.Model;
-using HouseCrawlerCSharp.WebCrawler.BaseModule;
 using NLog;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Edge;
+using OpenQA.Selenium.Firefox;
+using OpenQA.Selenium.Remote;
 using OpenQA.Selenium.Support.UI;
 using System;
 using System.Collections.Generic;
@@ -20,9 +22,12 @@ namespace HouseCrawlerCSharp.WebCrawler
 		private readonly Logger InfoLogger = LogManager.GetLogger("InfoError");
 		private readonly Logger ImageLogger = LogManager.GetLogger("ImageError");
 
-		protected CrawlerProcessData ProcessData;
-		private ChromeDriver WebDriver;
+		private ChromeDriverService ChromeService;
+		private EdgeDriverService EdgeService;
+		private FirefoxDriverService FirefoxService;
+		private RemoteWebDriver WebDriver;
 
+		protected CrawlerProcessData ProcessData;
 		public BaseHouseListPageModule HouseListPage;
 		public BaseHouseDetailPageModule HouseDetailPage;
 
@@ -74,14 +79,60 @@ namespace HouseCrawlerCSharp.WebCrawler
 		}
 
 		public BaseCrawlerModule InitWebDriver(){
-			var service = ChromeDriverService.CreateDefaultService(@"_WebDriver", "chromedriver.exe");
-			service.HideCommandPromptWindow = true;
+			switch (CrawlerConfig.Config["WebDriverOptions:DriverType"])
+			{
+				case "1":
+					if(ChromeService == null)
+					{
+						ChromeService = ChromeDriverService.CreateDefaultService(Path.GetDirectoryName(CrawlerConfig.Config["WebDriverOptions:ChromeDriverPath"]), Path.GetFileName(CrawlerConfig.Config["WebDriverOptions:ChromeDriverPath"]));
+						ChromeService.HideCommandPromptWindow = true;
+					}
 
-			WebDriver = new ChromeDriver(service); //會開啟瀏覽器
-			WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
-			WebDriver.Manage().Timeouts().AsynchronousJavaScript = TimeSpan.FromSeconds(10);
-			WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
+					var chromeOpts = new ChromeOptions();
+					chromeOpts.AcceptInsecureCertificates = true;
+					chromeOpts.AddArgument("no-sandbox");
 
+					WebDriver = new ChromeDriver(ChromeService, chromeOpts); 
+					WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
+					WebDriver.Manage().Timeouts().AsynchronousJavaScript = TimeSpan.FromSeconds(10);
+					WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
+					break;
+				case "2":
+					if (EdgeService == null)
+					{
+						EdgeService = EdgeDriverService.CreateDefaultService(Path.GetDirectoryName(CrawlerConfig.Config["WebDriverOptions:EdgeDriverPath"]), Path.GetFileName(CrawlerConfig.Config["WebDriverOptions:EdgeDriverPath"]));
+						EdgeService.HideCommandPromptWindow = true;
+					}
+
+					var edgeOpts = new EdgeOptions();
+					edgeOpts.AcceptInsecureCertificates = true;
+					edgeOpts.AddAdditionalCapability("no-sandbox", true);
+
+					WebDriver = new EdgeDriver(EdgeService, edgeOpts); 
+					WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
+					WebDriver.Manage().Timeouts().AsynchronousJavaScript = TimeSpan.FromSeconds(10);
+					WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
+					break;
+				case "3":
+					if (FirefoxService == null)
+					{
+						FirefoxService = FirefoxDriverService.CreateDefaultService(Path.GetDirectoryName(CrawlerConfig.Config["WebDriverOptions:FirefoxDriverPath"]), Path.GetFileName(CrawlerConfig.Config["WebDriverOptions:FirefoxDriverPath"]));
+						FirefoxService.Host = "::1"; //使用IPv6以提升速度
+						FirefoxService.HideCommandPromptWindow = true;
+					}
+
+					var opts = new FirefoxOptions();
+					opts.AcceptInsecureCertificates = true;
+					opts.AddArgument("no-sandbox");
+
+					WebDriver = new FirefoxDriver(FirefoxService, opts); 
+					WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
+					WebDriver.Manage().Timeouts().AsynchronousJavaScript = TimeSpan.FromSeconds(10);
+					WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
+					break;
+
+			}
+			
 			var waiter = new WebDriverWait(WebDriver, TimeSpan.FromSeconds(10));
 			var js = (IJavaScriptExecutor)WebDriver;
 
@@ -93,7 +144,18 @@ namespace HouseCrawlerCSharp.WebCrawler
 
 		public BaseCrawlerModule CloseBrowser()
 		{
-			WebDriver.Quit();
+			try
+			{
+				WebDriver.Close();
+			}
+			catch (Exception)
+			{
+
+			}
+			finally
+			{
+				WebDriver.Quit();
+			}
 
 			return this;
 		}

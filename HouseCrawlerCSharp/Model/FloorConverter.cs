@@ -7,11 +7,7 @@ namespace HouseCrawlerCSharp.Model
 	{
 		public override object StringToField(string from)
 		{
-			if (from == "整棟")
-			{
-				return 0;
-			}
-			else if (from.EndsWith("F", StringComparison.OrdinalIgnoreCase))
+			if (from.EndsWith("F", StringComparison.OrdinalIgnoreCase))
 			{
 				return int.Parse(from.Replace("F", "", StringComparison.OrdinalIgnoreCase));
 			}
@@ -31,11 +27,7 @@ namespace HouseCrawlerCSharp.Model
 			}
 
 			var value = (int)from;
-			if (value == 0)
-			{
-				return "整棟";
-			}
-			else if (value > 0)
+			if (value > 0)
 			{
 				return $"{value}F";
 			}

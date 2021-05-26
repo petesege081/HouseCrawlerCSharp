@@ -29,8 +29,8 @@ namespace HouseCrawlerCSharp.Model
 		[FieldHidden]
 		public static readonly string[] Headers = new string[] { 
 			"房屋代碼", "標題", "總價", "單價", "房",
-			"廳", "衛", "陽台", "屋齡", "樓層", 
-			"最高樓層", "朝向", "社區", "地址", "緯度", 
+			"廳", "衛", "陽台", "屋齡", "開始樓層", "結束樓層",
+			"建物總樓層", "朝向", "社區", "地址", "緯度", 
 			"經度", "房屋類型", "登記用途", "權狀坪數", "主建物坪數",
 			"共用坪數", "附屬建物坪數", "陽台坪數", "土地坪數", "含車位", 
 			"車位類型", "車位坪數", "照片目錄", "連結", "建立時間" };
@@ -58,9 +58,10 @@ namespace HouseCrawlerCSharp.Model
 		public double Age;
 		[FieldOrder(10)]
 		[FieldConverter(typeof(FloorConverter))]
-		public int? FloorFrom; //樓層
+		public int? FloorFrom; //開始樓層
 		[FieldOrder(11)]
-		public int? FloorTo; //樓層
+		[FieldConverter(typeof(FloorConverter))]
+		public int? FloorTo; //結束樓層
 		[FieldOrder(12)]
 		[FieldConverter(typeof(FloorConverter))]
 		public int? MaxFloor; //最高樓層

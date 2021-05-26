@@ -11,9 +11,6 @@ namespace HouseCrawlerCSharp
 	{
 		static void Main()
 		{
-			//Debug();
-			//return;
-
 			var Logger = LogManager.GetLogger("Default");
 
 			//產生要執行的模組
@@ -54,6 +51,11 @@ namespace HouseCrawlerCSharp
 					crawlerModule.CloseBrowser();
 					Logger.Error($"WebDriver is abnormal, restarting the process...\n> {ex.Message}");
 				}
+				catch(Exception ex)
+				{
+					crawlerModule.CloseBrowser();
+					throw ex;
+				}
 			}
 
 			Console.WriteLine("");
@@ -67,6 +69,7 @@ namespace HouseCrawlerCSharp
 				keyInfo = Console.ReadKey();
 			}
 		}
+
 
 		static void Debug(){
 			var processData = FileHelper.ReadProcessData(@"D:\Code\_HouseData2\YungChing");
