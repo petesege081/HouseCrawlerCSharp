@@ -50,7 +50,7 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 			HouseInfo info = new HouseInfo
 			{
 				Id = HouseId,
-				HouseLink = HouseLink,
+				HouseLink = HouseLink.Split("#")[0],
 				PhotoLinks = new List<string>()
 			};
 
@@ -153,8 +153,6 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 
 				if (string.IsNullOrEmpty(value))
 				{
-					//Logger.Warn($"{HouseId} > {field} is empty.");
-					//InfoLogger.Warn($"{HouseId}\n{field} is empty.");
 					continue;
 				}
 
@@ -162,22 +160,28 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 				{
 					case "樓層":
 						var floorArr = value.Split("/");
-						if (floorArr[0].Contains("B"))
-						{
-							info.Floor = -1 * int.Parse(floorArr[0].Replace("B", ""));
-						}
-						else if (floorArr[0].Contains("F"))
-						{
-							info.Floor = int.Parse(floorArr[0].Replace("F", ""));
-						}
-						else if (floorArr[0].Contains("整棟"))
-						{
-							info.Floor = 0;
-						}
 
+						//最高樓層
 						if (floorArr[1].Contains("F"))
 						{
 							info.MaxFloor = int.Parse(floorArr[1].Replace("F", ""));
+						}
+
+
+						if (floorArr[0].Contains("B"))
+						{
+							info.FloorFrom = -1 * int.Parse(floorArr[0].Replace("B", ""));
+							info.FloorTo = info.FloorFrom;
+						}
+						else if (floorArr[0].Contains("F"))
+						{
+							info.FloorFrom = int.Parse(floorArr[0].Replace("F", ""));
+							info.FloorTo = info.FloorFrom;
+						}
+						else if (floorArr[0].Contains("整棟") && info.MaxFloor != null)
+						{
+							info.FloorFrom = 1;
+							info.FloorTo = info.MaxFloor;
 						}
 						break;
 					case "朝向":

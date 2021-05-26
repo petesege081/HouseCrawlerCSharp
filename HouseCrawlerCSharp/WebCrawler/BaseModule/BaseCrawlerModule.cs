@@ -208,6 +208,7 @@ namespace HouseCrawlerCSharp.WebCrawler
 
 						if (info != null)
 						{
+							info.CreatTime = DateTime.Now;
 							tmpHouseInfos.Add(info);
 							DownloadHousePhotos(info);
 
@@ -330,6 +331,7 @@ namespace HouseCrawlerCSharp.WebCrawler
 
 					if (info != null)
 					{
+						info.CreatTime = DateTime.Now;
 						retryInfos.Add(info);
 						DownloadHousePhotos(info);
 						Logger.Trace($"{houseId} > Get info successfully. (Retry: {retryCount})");

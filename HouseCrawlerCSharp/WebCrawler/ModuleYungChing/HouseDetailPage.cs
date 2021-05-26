@@ -5,7 +5,6 @@ using SeleniumExtras.WaitHelpers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -90,28 +89,6 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 						//樓層
 						case "3":
 							var floorArr = value.Split("/");
-							
-	                        //非單一樓層時, 取最高樓層
-							match = Regex.Match(floorArr[0], @"(?<=\d+.*?~.*?)\d+");
-							var floorStr = match.Success ? match.Groups[0].Value : floorArr[0];
-
-							match = Regex.Match(floorStr, numberPattern);
-							if (match.Success)
-							{
-								var floor = int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
-								if (floor == 0)
-								{
-									info.Floor = null;
-								}
-								else if (floorStr.Contains("B"))
-								{
-									info.Floor = -1 * floor;
-								}
-								else
-								{
-									info.Floor = floor;
-								}
-							}
 
 							//最高樓層
 							match = Regex.Match(floorArr[1], numberPattern);
@@ -123,11 +100,56 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 								{
 									info.MaxFloor = null;
 								}
+								else if (floorArr[1].Contains("B"))
+								{
+									info.MaxFloor = -1 * maxFloor;
+								}
 								else
 								{
 									info.MaxFloor = maxFloor;
 								}
 							}
+
+							//非單一樓層時, 取最高樓層
+							var fromToArr = floorArr[0].Split("~");
+							match = Regex.Match(fromToArr[0], numberPattern);
+							if (match.Success)
+							{
+								var floorFrom = int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
+
+								if (floorFrom == 0)
+								{
+									info.FloorFrom = null;
+								}
+								else if (fromToArr[0].Contains("B"))
+								{
+									info.FloorFrom = -1 * floorFrom;
+								}
+								else
+								{
+									info.FloorFrom = floorFrom;
+								}
+							}
+
+							match = Regex.Match(fromToArr[1], numberPattern);
+							if (match.Success)
+							{
+								var floorTo = int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
+
+								if (floorTo == 0)
+								{
+									info.FloorTo = null;
+								}
+								else if (fromToArr[1].Contains("B"))
+								{
+									info.FloorTo = -1 * floorTo;
+								}
+								else
+								{
+									info.FloorTo = floorTo;
+								}
+							}
+
 							break;
 						//格局
 						case "7":
@@ -139,12 +161,6 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 							break;
 					}
 				}
-			}
-
-			//特殊情況處理
-			if (info.BuildingType.Contains("別墅") || info.BuildingType.Contains("透天"))
-			{
-				info.Floor = 0;
 			}
 
 			//標題
@@ -183,7 +199,7 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 					//停車位
 					case "bg-car":
 						info.IncludeParking = true;
-						info.ParkingType = section.FindElement(By.CssSelector("li")).Text.RemoveLineBreak(true).Split(" ")[0];
+						info.ParkingType = section.FindElement(By.CssSelector("li")).Text.RemoveLineBreak().Replace("固定車位", "").Trim();
 						break;
 					//其他資訊
 					case "bg-other":

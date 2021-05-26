@@ -135,42 +135,56 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 					case "樓層":
 						var floorArr = value.Split("/");
 
-						//非單一樓層時, 取最高樓層
-						match = Regex.Match(floorArr[0], @"(?<=\d+.*?-)\d+");
-						var floorStr = match.Success ? match.Groups[0].Value : floorArr[0];
-
-						match = Regex.Match(floorStr, numberPattern);
-						if (match.Success)
-						{
-							var floor = int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
-							if (floor == 0)
-							{
-								info.Floor = null;
-							}
-							else if (floorStr.Contains("B"))
-							{
-								info.Floor = -1 * floor;
-							}
-							else if (floorStr.Contains("樓"))
-							{
-								info.Floor = floor;
-							}
-							else
-							{
-								info.Floor = null;
-							}
-						}
-
 						//最高樓層
 						match = Regex.Match(floorArr[1], numberPattern);
 						if (match.Success)
 						{
 							var maxFloor = int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
 
-							if (maxFloor == 0) {
+							if (maxFloor == 0)
+							{
 								info.MaxFloor = null;
-							} else {
+							}
+							else
+							{
 								info.MaxFloor = maxFloor;
+							}
+						}
+
+						//樓層
+						match = Regex.Match(floorArr[0], @"B?-?\d+樓?(?=\D*?-\D*?\d?)");
+						if (match.Success)
+						{
+							if (match.Groups[0].Value.Contains("B"))
+							{
+								info.FloorFrom = -1 * int.Parse(match.Groups[0].Value.Replace("B", ""), NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
+							}
+							else if (match.Groups[0].Value.Contains("樓"))
+							{
+								info.FloorFrom = int.Parse(match.Groups[0].Value.Replace("樓", ""), NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
+							}
+							else
+							{
+								info.FloorFrom = int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
+							}
+						}
+
+						match = Regex.Match(floorArr[0], @"(?<=\d+.*?-\D*?)B?\d+樓?");
+						var floorToStr = match.Success ? match.Groups[0].Value : floorArr[0];
+						match = Regex.Match(floorToStr, numberPattern);
+						if (match.Success)
+						{
+							if (floorToStr.Contains("B"))
+							{
+								info.FloorTo = -1 * int.Parse(match.Groups[0].Value.Replace("B", ""), NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
+							}
+							else if (floorToStr.Contains("樓"))
+							{
+								info.FloorTo = int.Parse(match.Groups[0].Value.Replace("樓", ""), NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
+							}
+							else
+							{
+								info.FloorTo = int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands | NumberStyles.AllowLeadingSign);
 							}
 						}
 						break;
@@ -199,12 +213,6 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 						}
 						break;
 				}
-			}
-
-			//特殊情況處理
-			if (info.BuildingType.Contains("別墅") || info.BuildingType.Contains("透天"))
-			{
-				info.Floor = 0;
 			}
 
 			//坪數細節
