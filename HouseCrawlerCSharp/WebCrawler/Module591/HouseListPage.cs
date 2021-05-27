@@ -42,7 +42,7 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 			var items = Driver.FindElements(By.CssSelector(".house-switch div"));
 			foreach (var item in items)
 			{
-				if (item.GetAttribute("class") == "tips-popbox-shadow" && item.Displayed)
+				if (item.GetAttribute("class") == "tips-popbox-img" && item.Displayed)
 				{
 					item.Click();
 					break;

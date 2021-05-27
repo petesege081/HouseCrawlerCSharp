@@ -10,9 +10,6 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 {
 	class HouseDetailPage : BaseHouseDetailPageModule
 	{
-		private readonly Logger Logger = LogManager.GetLogger("Default");
-		private readonly Logger InfoLogger = LogManager.GetLogger("InfoError");
-
 		protected override string GetHouseDetailLink(string houseId)
 		{
 			return $"https://sale.591.com.tw/home/house/detail/2/{houseId}.html#detail-map";
@@ -84,8 +81,11 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 
 			//經緯度
 			var latLng = Driver.FindElement(By.CssSelector(".detail-map-box .datalazyload")).GetAttribute("value").ToLatLng();
-			info.Lat = latLng.Latitude;
-			info.Lng = latLng.Longitude;
+			if(latLng != null)
+			{
+				info.Lat = latLng.Latitude;
+				info.Lng = latLng.Longitude;
+			}
 
 			var floorBox = Driver.FindElements(By.CssSelector(".info-box-floor > .info-floor-left"));
 			foreach (var item in floorBox)
@@ -214,8 +214,6 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 
 							if(string.IsNullOrEmpty(value))
 							{
-								Logger.Warn($"{HouseId} > {field} is empty.");
-								InfoLogger.Warn($"{HouseId}\n{field} is empty.");
 								continue;
 							}
 

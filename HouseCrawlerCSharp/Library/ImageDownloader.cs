@@ -29,8 +29,9 @@ namespace HouseCrawlerCSharp.Library
                 }
                 catch (WebException ex)
                 {
+                    var statusCode = ((HttpWebResponse)ex.Response).StatusCode.ToString();
                     //網路異常或伺服器暫時無法使用
-                    if(ex.Response == null || ((HttpWebResponse)ex.Response).StatusCode == HttpStatusCode.ServiceUnavailable) {
+                    if (ex.Response == null || statusCode.StartsWith("5")) {
                         Thread.Sleep(3000);
                         tryCount++;
                         continue;
