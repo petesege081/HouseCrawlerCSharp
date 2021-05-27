@@ -8,7 +8,7 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 {
 	class HouseListPage : BaseHouseListPageModule
 	{
-		protected override string GetHouseListLink(string regionKey, int? orderBy)
+		protected override string GetHouseListLink(string regionKey, int page, string totalRows, int? orderBy)
 		{
 			var orderStr = orderBy switch
 			{
@@ -20,6 +20,10 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 			var url = $"https://sale.591.com.tw/?shType=list&regionid={regionKey}";
 			if(!string.IsNullOrWhiteSpace(orderStr)) {
 				url += $"&order={orderStr}";
+			}
+
+			if(page > 1){
+				url += $"&firstRow={(page - 1) * 30}&totalRows={totalRows}";
 			}
 
 			return url;
@@ -83,11 +87,15 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 			return this;
 		}
 
-		protected override int GetHouseCount()
+		public override int GetHouseCount()
 		{
-			var totalStr = Driver.FindElement(By.CssSelector(".houseList-head-title")).Text;
-			var match = Regex.Match(totalStr, @"(\d+,)*\d+");
-			return match.Success ? int.Parse(match.Groups[0].Value) : 0;
+			if(HouseCount < 0){
+				var totalStr = Driver.FindElement(By.CssSelector(".houseList-head-title")).Text;
+				var match = Regex.Match(totalStr, @"(\d+,)*\d+");
+				HouseCount = match.Success ? int.Parse(match.Groups[0].Value) : 0;
+			}
+
+			return HouseCount;
 		}
 
 		public override List<HouseListItem> GetHouseList()
