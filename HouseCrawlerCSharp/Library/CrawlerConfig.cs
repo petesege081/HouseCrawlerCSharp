@@ -11,4 +11,11 @@ namespace HouseCrawlerCSharp.Library
 		   .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
 		   .Build();
 	}
+
+	enum CrawlerModuleType : int
+	{
+		_591 = 1,
+		Sinyi = 2,
+		YungChing = 3
+	}
 }

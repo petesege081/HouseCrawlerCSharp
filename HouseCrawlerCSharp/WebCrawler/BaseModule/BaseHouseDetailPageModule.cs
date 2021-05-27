@@ -1,4 +1,6 @@
-﻿using HouseCrawlerCSharp.WebCrawler.BaseModule;
+﻿using HouseCrawlerCSharp.Library;
+using HouseCrawlerCSharp.WebCrawler.BaseModule;
+using System;
 using System.Collections.Generic;
 
 namespace HouseCrawlerCSharp.Model
@@ -8,7 +10,7 @@ namespace HouseCrawlerCSharp.Model
 		protected string HouseId;
 		protected string HouseLink;
 		protected bool IsHouseExist;
-
+				
 		/// <summary>
 		/// Open house detail page.
 		/// </summary>

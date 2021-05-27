@@ -1,42 +1,64 @@
 ﻿using HouseCrawlerCSharp.Library;
+using HouseCrawlerCSharp.Model;
 using HouseCrawlerCSharp.WebCrawler;
 using NLog;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace HouseCrawlerCSharp
 {
 	class Program
 	{
+		[DllImport("user32.dll", SetLastError = true)]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, int uFlags);
+		private const int HWND_TOPMOST = -1;
+		private const int SWP_NOMOVE = 0x0002;
+		private const int SWP_NOSIZE = 0x0001;
+
 		static void Main()
 		{
+			//最上層執行
+			var hWnd = Process.GetCurrentProcess().MainWindowHandle;
+			SetWindowPos(hWnd, new IntPtr(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
 			var Logger = LogManager.GetLogger("Default");
+			var errorLogger = LogManager.GetLogger("CrawlerError");
 
 			//產生要執行的模組
 			BaseCrawlerModule crawlerModule = null;
-			switch(CrawlerConfig.Config["CrawlerOptions:ModuleType"])
+			var type = (CrawlerModuleType)Enum.Parse(typeof(CrawlerModuleType), CrawlerConfig.Config["CrawlerOptions:ModuleType"]);
+			switch (type)
 			{
-				case "1":
+				case CrawlerModuleType._591:
 					crawlerModule = new Module591();
 					break;
-				case "2":
+				case CrawlerModuleType.Sinyi:
 					crawlerModule = new ModuleSinyi();
 					break;
-				case "3":
+				case CrawlerModuleType.YungChing:
 					crawlerModule = new ModuleYungChing();
 					break;
 				default:
-					Console.WriteLine("Module type is invalid.");
+					Logger.Error("Module type is invalid.");
 					return;
 			}
 			crawlerModule.SetFolder(CrawlerConfig.Config["CrawlerOptions:WorkFolder"]);
 
-			//關閉程式時同時關閉瀏覽器
+			//關閉程式時同時關閉WebDriver
 			Console.TreatControlCAsInput = true;
 			AppDomain.CurrentDomain.ProcessExit += new EventHandler((s, e) =>
 			{
-				crawlerModule.CloseBrowser();
+				KillAllDriverProcess();
 			});
 
 			// 執行模組, 如果WebDriver有問題, 則從記錄點重新開始
@@ -48,12 +70,13 @@ namespace HouseCrawlerCSharp
 				}
 				catch (WebDriverException ex)
 				{
-					crawlerModule.CloseBrowser();
 					Logger.Error($"WebDriver is abnormal, restarting the process...\n> {ex.Message}");
 				}
 				catch(Exception ex)
 				{
-					crawlerModule.CloseBrowser();
+					Logger.Error($"Unexpected exception!!!\n{ex.Message}");
+					errorLogger.Error($"System| Unexpected exception!!!\n>{ex}");
+					KillAllDriverProcess();
 					throw ex;
 				}
 			}
@@ -70,14 +93,16 @@ namespace HouseCrawlerCSharp
 			}
 		}
 
-
-		static void Debug(){
-			var processData = FileHelper.ReadProcessData(@"D:\Code\_HouseData2\YungChing");
-			var houseId = "4945203";
-
-			var info = new ModuleYungChing().InitWebDriver().HouseDetailPage.GoTo(houseId).GetHouseInfo(processData.HouseList.FirstOrDefault(o => o.HouseId == houseId).Extras); ;
-
-			var gg = 0;
+		static void KillAllDriverProcess(){
+			var driverName = WebDriverHandler.GetWebDriverFileName();
+			var currProcessId = Process.GetCurrentProcess().Id;
+			foreach (var process in Process.GetProcessesByName(driverName))
+			{
+				if (ParentProcessUtilities.GetParentProcess(process.Handle).Id == currProcessId)
+				{
+					process.Kill();
+				}
+			}
 		}
 	}
 }

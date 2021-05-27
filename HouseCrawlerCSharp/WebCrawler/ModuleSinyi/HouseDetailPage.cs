@@ -105,8 +105,11 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 
 			//經緯度
 			var latLng = Driver.FindElement(By.CssSelector(".buy-carousel-content-frame a[href*='maps.google.com/maps']")).GetAttribute("href").ToLatLng();
-			info.Lat = latLng.Latitude;
-			info.Lng = latLng.Longitude;
+			if (latLng != null)
+			{
+				info.Lat = latLng.Latitude;
+				info.Lng = latLng.Longitude;
+			}
 
 			var basicItems = Driver.FindElements(By.CssSelector(".buy-content-basic .buy-content-body.d-lg-block .buy-content-basic-cell, .buy-content-basic .buy-content-body.d-lg-block .buy-content-obj-cell-full-width"));
 			foreach(var item in basicItems)

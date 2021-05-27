@@ -176,8 +176,11 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 
 			//經緯度
 			var latLng = Driver.FindElement(By.CssSelector(".house-photos-main-map a[href*='maps.google.com/maps']")).GetAttribute("href").ToLatLng();
-			info.Lat = latLng.Latitude;
-			info.Lng = latLng.Longitude;
+			if (latLng != null)
+			{
+				info.Lat = latLng.Latitude;
+				info.Lng = latLng.Longitude;
+			}
 
 			//House detail box
 			var sections = Driver.FindElements(By.CssSelector(".m-house-detail-block.detail-data > section"));
