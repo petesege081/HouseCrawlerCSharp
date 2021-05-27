@@ -11,20 +11,16 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 {
 	class HouseListPage : BaseHouseListPageModule
 	{
-		protected override string GetHouseListLink(string regionKey, int? orderBy)
+		protected override string GetHouseListLink(string regionKey, int page, string extraParam, int? orderBy)
 		{
 			var orderStr = orderBy switch
 			{
 				HouseOrderBy.PUBLISH_DESC => "80",
 				//HouseOrderBy.PUBLISH_ASC => "publish-asc",
-				_ => "",
+				_ => "0",
 			};
 
-			var url = $"https://buy.yungching.com.tw/region/{regionKey}/";
-			if (!string.IsNullOrWhiteSpace(orderStr))
-			{
-				url += $"?od={orderStr}";
-			}
+			var url = $"https://buy.yungching.com.tw/region/{regionKey}/?od={orderStr}&pg={page}";
 
 			return url;
 		}
@@ -70,11 +66,15 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 			return this;
 		}
 
-		protected override int GetHouseCount()
+		public override int GetHouseCount()
 		{
-			var totalStr = Driver.FindElement(By.CssSelector(".list-hd-inner > [ga-label='buy_filter_tag_none']")).Text;
-			var match = Regex.Match(totalStr, @"(\d+,)*\d+");
-			return match.Success ? int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands) : 0;
+			if(HouseCount < 0){
+				var totalStr = Driver.FindElement(By.CssSelector(".list-hd-inner > [ga-label='buy_filter_tag_none']")).Text;
+				var match = Regex.Match(totalStr, @"(\d+,)*\d+");
+				HouseCount =  match.Success ? int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands) : 0;
+			}
+
+			return HouseCount;
 		}
 
 		public override List<HouseListItem> GetHouseList()

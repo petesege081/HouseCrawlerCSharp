@@ -108,12 +108,16 @@ namespace HouseCrawlerCSharp.WebCrawler
 				}
 
 				//若該地區處於佇列中, 開始搜尋區域內的House ID
-				if (ProcessData.Regions[i].Status == RegionStatus.QUEUE)
+				if (ProcessData.Regions[i].Status == RegionStatus.QUEUE || ProcessData.Regions[i].Status == RegionStatus.IN_LIST_PROCESS)
 				{
 					Logger.Info($@"{ProcessData.Regions[i].Name} > Start searching...");
 
-					ProcessData.HouseList = new List<HouseListItem>();
-					ProcessData.Cursor = 0;
+					if(ProcessData.Regions[i].Status == RegionStatus.QUEUE)
+					{
+						ProcessData.HouseList = new List<HouseListItem>();
+						ProcessData.Regions[i].Status = RegionStatus.IN_LIST_PROCESS;
+						ProcessData.Cursor = 0;
+					}
 
 					var page = CreateHouseListPage();
 
@@ -121,11 +125,20 @@ namespace HouseCrawlerCSharp.WebCrawler
 					{
 						//Open house list page
 						page.InitWebDriverHandler();
-						page.GoTo(ProcessData.Regions[i].SiteKey);
+						page.GoTo(ProcessData.Regions[i].SiteKey, ProcessData.Cursor + 1, ProcessData.TotalRows.ToString());
 
 						while (true)
 						{
 							ProcessData.HouseList.AddRange(page.GetHouseList());
+
+							ProcessData.Cursor = page.PageIndex;
+							if(ProcessData.Cursor == 1)
+							{
+								ProcessData.TotalRows = page.GetHouseCount();
+							}
+
+							//儲存當前進度資料
+							FileHelper.SaveProcessData(WorkFolder, ProcessData);
 
 							Logger.Trace($"Region: {ProcessData.Regions[i].Name}, Page: {page.PageIndex}, Count: {ProcessData.HouseList.Count}");
 
@@ -159,7 +172,7 @@ namespace HouseCrawlerCSharp.WebCrawler
 						page.Quit();
 					}
 
-					ProcessData.Regions[i].Status = RegionStatus.IN_PROCESS;
+					ProcessData.Regions[i].Status = RegionStatus.IN_DETAIL_PROCESS;
 
 					//儲存當前進度資料
 					FileHelper.SaveProcessData(WorkFolder, ProcessData);

@@ -11,7 +11,7 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 {
 	class HouseListPage : BaseHouseListPageModule
 	{
-		protected override string GetHouseListLink(string regionKey, int? orderBy)
+		protected override string GetHouseListLink(string regionKey, int page, string extraParam, int? orderBy)
 		{
 			var orderStr = orderBy switch
 			{
@@ -25,7 +25,8 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 			{
 				url += $"{orderStr}/";
 			}
-			url += "index";
+
+			url += page == 1 ? "index" : $"{page}";
 
 			return url;
 		}
@@ -83,14 +84,18 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 			return this;
 		}
 
-		protected override int GetHouseCount()
+		public override int GetHouseCount()
 		{
-			var listFrame = Driver.FindElement(By.CssSelector(".buy-list-frame"));
-			var parent = listFrame.FindElement(By.XPath("./.."));
-			var totalStr = parent.FindElement(By.CssSelector(":first-child .d-lg-none")).GetAttribute("innerHTML").RemoveTag(true);
+			if(HouseCount < 0){
+				var listFrame = Driver.FindElement(By.CssSelector(".buy-list-frame"));
+				var parent = listFrame.FindElement(By.XPath("./.."));
+				var totalStr = parent.FindElement(By.CssSelector(":first-child .d-lg-none")).GetAttribute("innerHTML").RemoveTag(true);
 
-			var match = Regex.Match(totalStr, @"(\d+,)*\d+");
-			return match.Success ? int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands) : 0;
+				var match = Regex.Match(totalStr, @"(\d+,)*\d+");
+				HouseCount = match.Success ? int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands) : 0;
+			}
+
+			return HouseCount;
 		}
 
 		public override List<HouseListItem> GetHouseList()

@@ -8,6 +8,7 @@ namespace HouseCrawlerCSharp.Model
 		public List<HouseListItem> HouseList = new List<HouseListItem>();
 		public List<FailedCase> FailedCases = new List<FailedCase>();
 		public int Cursor = 0;
+		public int TotalRows = 0;
 	}
 
 	class RegionData{
@@ -20,9 +21,10 @@ namespace HouseCrawlerCSharp.Model
 	static class RegionStatus
 	{
 		public const int QUEUE = 1;
-		public const int IN_PROCESS = 2;
-		public const int DONE = 3;
-		public const int SKIP = 4;
+		public const int IN_LIST_PROCESS = 2;
+		public const int IN_DETAIL_PROCESS = 3;
+		public const int DONE = 4;
+		public const int SKIP = 5;
 	}
 
 	static class HouseOrderBy
