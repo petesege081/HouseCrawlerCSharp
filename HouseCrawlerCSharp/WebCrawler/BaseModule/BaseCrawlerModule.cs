@@ -123,7 +123,7 @@ namespace HouseCrawlerCSharp.WebCrawler
 						page.InitWebDriverHandler();
 						page.GoTo(ProcessData.Regions[i].SiteKey);
 
-						while (true && ProcessData.HouseList.Count < 250)
+						while (true)
 						{
 							ProcessData.HouseList.AddRange(page.GetHouseList());
 
