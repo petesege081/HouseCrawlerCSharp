@@ -16,8 +16,8 @@ namespace HouseCrawlerCSharp.Library
         {
             var tryCount = 0;
 
-            // 如果是Error 503, 等待3秒後並重新下載, 最多嘗試3次
-            while(tryCount < 3)
+            // 如果出錯, 等待3秒後並重新下載, 最多嘗試3次
+            while(true)
             {
                 try
                 {
@@ -29,9 +29,15 @@ namespace HouseCrawlerCSharp.Library
                 }
                 catch (WebException ex)
                 {
-                    var statusCode = ((HttpWebResponse)ex.Response).StatusCode.ToString();
-                    //網路異常或伺服器暫時無法使用
-                    if (ex.Response == null || statusCode.StartsWith("5")) {
+                    ////網路異常或伺服器暫時無法使用
+                    //if (ex.Response == null || ((HttpWebResponse)ex.Response).StatusCode.ToString().StartsWith("5")) {
+                    //  Thread.Sleep(3000);
+                    //  tryCount++;
+                    //  continue;
+                    //}
+
+                    if(tryCount < 3)
+                    {
                         Thread.Sleep(3000);
                         tryCount++;
                         continue;

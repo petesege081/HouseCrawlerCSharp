@@ -34,6 +34,7 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 
 			//Click google map
 			Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".buy-carousel-frame > .carousel-thumbnail-frame > .carousel-thumbnail-map")));
+			Js.ExecuteScript("window.scrollTo(0, 350)"); //防止圖片被懸浮的Footer擋住導致Click失敗
 			Driver.FindElement(By.CssSelector(".buy-carousel-frame > .carousel-thumbnail-frame > .carousel-thumbnail-map")).Click();
 			Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".buy-carousel-frame > .buy-carousel-content-frame > .static-map-img")));
 			Driver.FindElement(By.CssSelector(".buy-carousel-frame > .buy-carousel-content-frame > .static-map-img")).Click();
@@ -50,6 +51,8 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 		public override HouseInfo GetHouseInfo(Dictionary<string, object> extras = null)
 		{
 			if (!IsHouseExist) return null;
+
+			Watcher.Restart();
 
 			HouseInfo info = new HouseInfo
 			{
@@ -133,7 +136,10 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 						break;
 					case "屋齡":
 						match = Regex.Match(value, numberPattern);
-						info.Age = double.Parse(match.Groups[0].Value);
+						if (match.Success)
+						{
+							info.Age = double.Parse(match.Groups[0].Value);
+						}
 						break;
 					case "樓層":
 						var floorArr = value.Split("/");
@@ -154,7 +160,7 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 							}
 						}
 
-						//樓層
+						//開始樓層
 						match = Regex.Match(floorArr[0], @"B?-?\d+樓?(?=\D*?-\D*?\d?)");
 						if (match.Success)
 						{
@@ -172,6 +178,7 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 							}
 						}
 
+						//結束樓層
 						match = Regex.Match(floorArr[0], @"(?<=\d+.*?-\D*?)B?\d+樓?");
 						var floorToStr = match.Success ? match.Groups[0].Value : floorArr[0];
 						match = Regex.Match(floorToStr, numberPattern);
@@ -293,7 +300,10 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 					case "carousel-thumbnail-pattern":
 					//case "carousel-thumbnail-map":
 						match = Regex.Match(item.GetAttribute("style"), @"(?<=background-image:\s*url\(\s*"").*?(?=""\s*\))");
-						info.PhotoLinks.Add(match.Groups[0].Value);
+						if(match.Success)
+						{
+							info.PhotoLinks.Add(match.Groups[0].Value);
+						}
 						break;
 				}
 			}
@@ -319,6 +329,9 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 				//Case 2. ex:https://media.cthouse.com.tw/photo//project2////house_photo/202105//1652514-4_new.jpg
 				info.PhotoLinks[i] = Regex.Replace(info.PhotoLinks[i], @"(?<=https?:/.*?/)/(?=.+?)", "");
 			}
+
+			Watcher.Stop();
+			Timer.DataCapture = Watcher.ElapsedMilliseconds;
 
 			return info;
 		}

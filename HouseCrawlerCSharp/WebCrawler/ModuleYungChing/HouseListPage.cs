@@ -27,7 +27,7 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 
 		protected override void WaitForPageLoaded()
 		{
-			Waiter.Until(cond => Js.ExecuteScript("return document.readyState").Equals("complete"));
+			//Waiter.Until(cond => Js.ExecuteScript("return document.readyState").Equals("complete"));
 		}
 
 		protected override void AfterPageLoadedEvent()
@@ -79,6 +79,8 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 
 		public override List<HouseListItem> GetHouseList()
 		{
+			Watcher.Restart();
+
 			var houseIds = new List<HouseListItem>();
 
 			var cards = Driver.FindElements(By.CssSelector(".l-main-list > .l-item-list .item-info"));
@@ -114,6 +116,9 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 
 				houseIds.Add(listItem);
 			}
+
+			Watcher.Stop();
+			Timer.DataCapture = Watcher.ElapsedMilliseconds;
 
 			return houseIds;
 		}

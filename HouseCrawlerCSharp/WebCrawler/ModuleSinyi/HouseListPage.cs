@@ -34,7 +34,6 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 		protected override void WaitForPageLoaded()
 		{
 			//等待Loading圖片消失
-			Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".buy-list-frame > .loading-frame-lc")));
 			Waiter.Until(cond =>
 			{
 				try
@@ -100,6 +99,8 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 
 		public override List<HouseListItem> GetHouseList()
 		{
+			Watcher.Restart();
+
 			List<HouseListItem> houseList = new List<HouseListItem>();
 
 			var cards = Driver.FindElements(By.CssSelector(".buy-list-frame > .buy-list-item > a"));
@@ -107,20 +108,6 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 			Match match;
 			foreach (var card in cards)
 			{
-				//跳過預售屋
-				var addrItems = card.FindElements(By.CssSelector(".LongInfoCard_Type_Address > span"));
-				var isPreSale = false;
-				foreach(var item in addrItems)
-				{
-					if(item.Text.Trim() == "預售")
-					{
-						isPreSale = true;
-						break;
-					}
-				}
-
-				if (isPreSale) continue;
-
 				match = Regex.Match(card.GetAttribute("href"), @"(?<=/buy/house/).*?(?=/)");
 
 				if(match.Success)
@@ -128,6 +115,9 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 					houseList.Add(new HouseListItem { HouseId = match.Groups[0].Value });
 				}
 			}
+
+			Watcher.Stop();
+			Timer.DataCapture = Watcher.ElapsedMilliseconds;
 
 			return houseList;
 		}

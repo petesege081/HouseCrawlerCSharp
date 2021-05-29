@@ -44,6 +44,8 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 		{
 			if (!IsHouseExist) return null;
 
+			Watcher.Restart();
+
 			HouseInfo info = new HouseInfo
 			{
 				Id = HouseId,
@@ -69,15 +71,10 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 			//單價
 			innerHtml = Driver.FindElement(By.CssSelector(".info-price-per")).GetAttribute("innerHTML");
 			match = Regex.Match(innerHtml.RemoveTag(true), @"(-?\d+(\.\d+)?)萬/坪");
-			try
+			if(match.Success)
 			{
 				info.UnitPrice = double.Parse(match.Groups[0].Value.Replace("萬/坪", ""));
 			}
-			catch (FormatException ex)
-			{
-				throw new FormatException($"{ex.Message}\nInput : {innerHtml}", ex);
-			}
-
 
 			//經緯度
 			var latLng = Driver.FindElement(By.CssSelector(".detail-map-box .datalazyload")).GetAttribute("value").ToLatLng();
@@ -275,6 +272,9 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 			{
 				info.PhotoLinks.Add(img.GetAttribute("data-original"));
 			}
+
+			Watcher.Stop();
+			Timer.DataCapture = Watcher.ElapsedMilliseconds;
 
 			return info;
 		}
