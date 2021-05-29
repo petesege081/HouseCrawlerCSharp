@@ -27,6 +27,7 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 		{
 			//Click google map
 			Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".m-house-photos-handlers > .house-info-img.carousel-map > a")));
+			Js.ExecuteScript("window.scrollTo(0, 250)"); 
 			Driver.FindElement(By.CssSelector(".m-house-photos-handlers > .house-info-img.carousel-map > a")).Click();
 			Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".house-photos-main-map-wrap.is-active > .house-photos-main-map")));
 			Driver.FindElement(By.CssSelector(".house-photos-main-map-wrap.is-active > .house-photos-main-map")).Click();
@@ -43,6 +44,8 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 		public override HouseInfo GetHouseInfo(Dictionary<string, object> extras = null)
 		{
 			if (!IsHouseExist) return null;
+
+			Watcher.Restart();
 
 			HouseInfo info = new HouseInfo
 			{
@@ -325,6 +328,9 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 					}
 				}
 			}
+
+			Watcher.Stop();
+			Timer.DataCapture = Watcher.ElapsedMilliseconds;
 
 			return info;
 		}

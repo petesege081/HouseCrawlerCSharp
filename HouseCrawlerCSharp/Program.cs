@@ -1,51 +1,49 @@
 ﻿using HouseCrawlerCSharp.Library;
-using HouseCrawlerCSharp.Model;
 using HouseCrawlerCSharp.WebCrawler;
 using NLog;
 using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Support.UI;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 
 namespace HouseCrawlerCSharp
 {
 	class Program
 	{
-		[DllImport("user32.dll", SetLastError = true)]
-		[return: MarshalAs(UnmanagedType.Bool)]
-		private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, int uFlags);
-		private const int HWND_TOPMOST = -1;
-		private const int SWP_NOMOVE = 0x0002;
-		private const int SWP_NOSIZE = 0x0001;
-
 		static void Main()
 		{
-			//最上層執行
-			var hWnd = Process.GetCurrentProcess().MainWindowHandle;
-			SetWindowPos(hWnd, new IntPtr(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-
 			var Logger = LogManager.GetLogger("Default");
 			var errorLogger = LogManager.GetLogger("CrawlerError");
 
+			//取得模組類型
+			var type = (CrawlerModuleType)Enum.Parse(typeof(CrawlerModuleType), CrawlerConfig.Config["CrawlerOptions:ModuleType"]);
+
+			//是否最上層執行
+			if (bool.Parse(CrawlerConfig.Config["ApplicationOptions:OnTop"])) {
+				ConsoleWindowHandler.SetConsoleWindowOnTop();
+			}
+
+			//調整Console視窗大小並置於螢幕右側
+			var width = int.Parse(CrawlerConfig.Config["ApplicationOptions:WindowWidth"]);
+			var hight = int.Parse(CrawlerConfig.Config["ApplicationOptions:WindowHight"]);
+			width = width > Console.BufferWidth ? Console.BufferWidth : width;
+			hight = hight > 60 ? 60 : hight;
+			Console.SetWindowSize(width, hight);
+			ConsoleWindowHandler.SetConsoleWindowPosition((int)type - 1);
+
 			//產生要執行的模組
 			BaseCrawlerModule crawlerModule = null;
-			var type = (CrawlerModuleType)Enum.Parse(typeof(CrawlerModuleType), CrawlerConfig.Config["CrawlerOptions:ModuleType"]);
 			switch (type)
 			{
 				case CrawlerModuleType._591:
 					crawlerModule = new Module591();
+					Console.Title = "591 House Crawler";
 					break;
 				case CrawlerModuleType.Sinyi:
+					Console.Title = "Sinyi House Crawler";
 					crawlerModule = new ModuleSinyi();
 					break;
 				case CrawlerModuleType.YungChing:
+					Console.Title = "YungChing House Crawler";
 					crawlerModule = new ModuleYungChing();
 					break;
 				default:

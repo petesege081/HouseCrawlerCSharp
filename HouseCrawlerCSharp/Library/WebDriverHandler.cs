@@ -5,6 +5,7 @@ using OpenQA.Selenium.Firefox;
 using OpenQA.Selenium.Remote;
 using OpenQA.Selenium.Support.UI;
 using System;
+using System.Drawing;
 using System.IO;
 
 namespace HouseCrawlerCSharp.Library
@@ -35,10 +36,15 @@ namespace HouseCrawlerCSharp.Library
 			return name;
 		}
 
-		public static WebDriverHandler CreateDefaultHandler(){
+		public static WebDriverHandler CreateDefaultHandler(int pageLoadTimeout = 15){
 			var handler = new WebDriverHandler();
-			
-			var type = (WebDriverType) Enum.Parse(typeof(WebDriverType), CrawlerConfig.Config["WebDriverOptions:DriverType"]);
+
+			//瀏覽器大小
+			int w, h;
+			w = string.IsNullOrWhiteSpace(CrawlerConfig.Config["WebDriverOptions:BrowserWidth"]) ? 1024 : int.Parse(CrawlerConfig.Config["WebDriverOptions:BrowserWidth"]);
+			h = string.IsNullOrWhiteSpace(CrawlerConfig.Config["WebDriverOptions:BrowserHight"]) ? 768 : int.Parse(CrawlerConfig.Config["WebDriverOptions:BrowserHight"]);
+
+			var type = (WebDriverType)Enum.Parse(typeof(WebDriverType), CrawlerConfig.Config["WebDriverOptions:DriverType"]);
 			switch (type)
 			{
 				case WebDriverType.Chrome:
@@ -50,7 +56,7 @@ namespace HouseCrawlerCSharp.Library
 						AcceptInsecureCertificates = true
 					};
 					chromeOpts.AddArgument("no-sandbox"); //最高權限
-					chromeOpts.AddArgument("window-size=1024,768"); //瀏覽器大小
+					chromeOpts.AddArgument($"window-size={Math.Max(w, 1024)},{Math.Max(h, 768)}");
 
 					handler.WebDriver = new ChromeDriver(chromeService, chromeOpts);
 					break;
@@ -63,7 +69,7 @@ namespace HouseCrawlerCSharp.Library
 						AcceptInsecureCertificates = true
 					};
 					edgeOpts.AddAdditionalCapability("no-sandbox", true);
-					edgeOpts.AddAdditionalCapability("window-size", "1024,768");
+					edgeOpts.AddAdditionalCapability("window-size", $"{Math.Max(w, 1024)},{Math.Max(h, 768)}");
 
 					handler.WebDriver = new EdgeDriver(edgeService, edgeOpts);
 					break;
@@ -77,14 +83,18 @@ namespace HouseCrawlerCSharp.Library
 						AcceptInsecureCertificates = true
 					};
 					opts.AddArgument("no-sandbox");
-
+					opts.AddArgument($"window-size={Math.Max(w, 1024)},{Math.Max(h, 768)}");
+					
 					handler.WebDriver = new FirefoxDriver(firefoxService, opts);
 					break;
 			}
 
-			handler.WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
+			handler.WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(pageLoadTimeout);
 			handler.WebDriver.Manage().Timeouts().AsynchronousJavaScript = TimeSpan.FromSeconds(10);
 			handler.WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
+
+			var rd = new Random();
+			handler.WebDriver.Manage().Window.Position = new Point(rd.Next(0, 20), rd.Next(0, 20));
 
 			handler.Waiter = new WebDriverWait(handler.WebDriver, TimeSpan.FromSeconds(10));
 			handler.Js = handler.WebDriver;

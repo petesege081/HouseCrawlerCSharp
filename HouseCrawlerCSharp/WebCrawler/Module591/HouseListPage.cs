@@ -31,6 +31,8 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 				
 		protected override void WaitForPageLoaded()
 		{
+			Js.ExecuteScript("window.scrollTo(0, document.body.scrollHeight)");
+
 			//頁面切換完成表示已載入資料
 			Waiter.Until(ExpectedConditions.ElementIsVisible(By.CssSelector(".pages .pageCurrent")));
 			Waiter.Until(cond => {
@@ -100,6 +102,8 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 
 		public override List<HouseListItem> GetHouseList()
 		{
+			Watcher.Restart();
+
 			var houseList = new List<HouseListItem>();
 
 			var houseBody = Driver.FindElement(By.CssSelector(".houseList-body"));
@@ -113,6 +117,9 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 			{
 				houseList.Add(new HouseListItem { HouseId = card.GetAttribute("data-bind") } );
 			}
+
+			Watcher.Stop();
+			Timer.DataCapture = Watcher.ElapsedMilliseconds;
 
 			return houseList;
 		}

@@ -2,21 +2,31 @@
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
 using System;
+using System.Diagnostics;
 
 namespace HouseCrawlerCSharp.WebCrawler.BaseModule
 {
-	abstract class BaseWebDriver
+	abstract class BasePageModule
 	{
 		protected IWebDriver Driver;
 		protected WebDriverWait Waiter;
 		protected IJavaScriptExecutor Js;
 
-		public virtual void InitWebDriverHandler()
+		protected Timer Timer = new Timer();
+		protected Stopwatch Watcher;
+
+		public Timer GetTimer(){
+			return Timer;
+		}
+
+		public virtual void InitWebDriverHandler(int pageLoadTimeout = 15)
 		{
-			var handler = WebDriverHandler.CreateDefaultHandler();
+			var handler = WebDriverHandler.CreateDefaultHandler(pageLoadTimeout);
 			Driver = handler.WebDriver;
 			Waiter = handler.Waiter;
 			Js = handler.Js;
+
+			Watcher = new Stopwatch();
 		}
 
 		public virtual void SetWebDriverHandler(WebDriverHandler handler)
@@ -49,5 +59,12 @@ namespace HouseCrawlerCSharp.WebCrawler.BaseModule
 				Driver.Quit();
 			}
 		}
+	}
+
+	class Timer
+	{
+		public double Connect;
+		public double PageReady;
+		public double DataCapture;
 	}
 }
