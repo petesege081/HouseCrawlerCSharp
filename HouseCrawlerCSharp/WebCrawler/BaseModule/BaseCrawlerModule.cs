@@ -1,50 +1,41 @@
 ﻿using HouseCrawlerCSharp.Library;
 using HouseCrawlerCSharp.Model;
+using HouseCrawlerCSharp.WebCrawler.BaseModule;
 using NLog;
 using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Edge;
-using OpenQA.Selenium.Firefox;
-using OpenQA.Selenium.Remote;
-using OpenQA.Selenium.Support.UI;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace HouseCrawlerCSharp.WebCrawler
 {
 	abstract class BaseCrawlerModule
 	{
 		private readonly Logger Logger = LogManager.GetLogger("Default");
-		private readonly Logger InfoLogger = LogManager.GetLogger("InfoError");
+		private readonly Logger errorLogger = LogManager.GetLogger("CrawlerError");
 		private readonly Logger ImageLogger = LogManager.GetLogger("ImageError");
 
-		private ChromeDriverService ChromeService;
-		private EdgeDriverService EdgeService;
-		private FirefoxDriverService FirefoxService;
-		private RemoteWebDriver WebDriver;
-
 		protected CrawlerProcessData ProcessData;
-		public BaseHouseListPageModule HouseListPage;
-		public BaseHouseDetailPageModule HouseDetailPage;
 
 		private string WorkFolder = "";
 		private readonly string ModuleType;
+		private int ListOrderBy;
 
 		protected abstract CrawlerProcessData GetDefaultProcessData();
 		protected abstract string GetModuleType();
-		protected abstract BaseHouseListPageModule InitHouseListPage();
-		protected abstract BaseHouseDetailPageModule InitHouseDetailPage();
+		public abstract BaseHouseListPageModule CreateHouseListPage();
+		public abstract BaseHouseDetailPageModule CreateHouseDetailPage();
 
 		public BaseCrawlerModule()
 		{
 			ModuleType = GetModuleType();
-
-			InitHouseListPage();
-			InitHouseDetailPage();
+			LogManager.Configuration.Variables["ModuleType"] = ModuleType;
 		}
 
 		///<summary>
@@ -53,15 +44,18 @@ namespace HouseCrawlerCSharp.WebCrawler
 		///<param name="folder"></param>
 		public BaseCrawlerModule SetFolder(string folder)
 		{
+			DirectoryInfo dir;
 			if (string.IsNullOrEmpty(folder.Trim()))
 			{
-				WorkFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ModuleType);
+				dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
 			}
 			else
 			{
-				WorkFolder = Path.Combine(folder, ModuleType);
+				dir = new DirectoryInfo(folder);
 			}
-			
+
+			WorkFolder = Path.Combine(dir.FullName, ModuleType);
+
 			LogManager.Configuration.Variables["WorkFolder"] = WorkFolder;
 
 			return this;
@@ -74,97 +68,12 @@ namespace HouseCrawlerCSharp.WebCrawler
 		///<returns></returns>
 		public BaseCrawlerModule SetOrderBy(int orderBy)
 		{
-			HouseListPage.OrderBy = orderBy;
-			return this;
-		}
-
-		public BaseCrawlerModule InitWebDriver(){
-			switch (CrawlerConfig.Config["WebDriverOptions:DriverType"])
-			{
-				case "1":
-					if(ChromeService == null)
-					{
-						ChromeService = ChromeDriverService.CreateDefaultService(Path.GetDirectoryName(CrawlerConfig.Config["WebDriverOptions:ChromeDriverPath"]), Path.GetFileName(CrawlerConfig.Config["WebDriverOptions:ChromeDriverPath"]));
-						ChromeService.HideCommandPromptWindow = true;
-					}
-
-					var chromeOpts = new ChromeOptions();
-					chromeOpts.AcceptInsecureCertificates = true;
-					chromeOpts.AddArgument("no-sandbox");
-
-					WebDriver = new ChromeDriver(ChromeService, chromeOpts); 
-					WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
-					WebDriver.Manage().Timeouts().AsynchronousJavaScript = TimeSpan.FromSeconds(10);
-					WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
-					break;
-				case "2":
-					if (EdgeService == null)
-					{
-						EdgeService = EdgeDriverService.CreateDefaultService(Path.GetDirectoryName(CrawlerConfig.Config["WebDriverOptions:EdgeDriverPath"]), Path.GetFileName(CrawlerConfig.Config["WebDriverOptions:EdgeDriverPath"]));
-						EdgeService.HideCommandPromptWindow = true;
-					}
-
-					var edgeOpts = new EdgeOptions();
-					edgeOpts.AcceptInsecureCertificates = true;
-					edgeOpts.AddAdditionalCapability("no-sandbox", true);
-
-					WebDriver = new EdgeDriver(EdgeService, edgeOpts); 
-					WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
-					WebDriver.Manage().Timeouts().AsynchronousJavaScript = TimeSpan.FromSeconds(10);
-					WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
-					break;
-				case "3":
-					if (FirefoxService == null)
-					{
-						FirefoxService = FirefoxDriverService.CreateDefaultService(Path.GetDirectoryName(CrawlerConfig.Config["WebDriverOptions:FirefoxDriverPath"]), Path.GetFileName(CrawlerConfig.Config["WebDriverOptions:FirefoxDriverPath"]));
-						FirefoxService.Host = "::1"; //使用IPv6以提升速度
-						FirefoxService.HideCommandPromptWindow = true;
-					}
-
-					var opts = new FirefoxOptions();
-					opts.AcceptInsecureCertificates = true;
-					opts.AddArgument("no-sandbox");
-
-					WebDriver = new FirefoxDriver(FirefoxService, opts); 
-					WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
-					WebDriver.Manage().Timeouts().AsynchronousJavaScript = TimeSpan.FromSeconds(10);
-					WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
-					break;
-
-			}
-			
-			var waiter = new WebDriverWait(WebDriver, TimeSpan.FromSeconds(10));
-			var js = (IJavaScriptExecutor)WebDriver;
-
-			HouseListPage.SetWebDriver(WebDriver, waiter, js);
-			HouseDetailPage.SetWebDriver(WebDriver, waiter, js);
-
-			return this;
-		}
-
-		public BaseCrawlerModule CloseBrowser()
-		{
-			try
-			{
-				WebDriver.Close();
-			}
-			catch (Exception)
-			{
-
-			}
-			finally
-			{
-				WebDriver.Quit();
-			}
-
+			ListOrderBy = orderBy;
 			return this;
 		}
 
 		public void StartProcess()
 		{
-			//啟動WebDriver
-			InitWebDriver();
-
 			//嘗試取得ProcessData
 			ProcessData = FileHelper.ReadProcessData(WorkFolder);
 
@@ -181,13 +90,12 @@ namespace HouseCrawlerCSharp.WebCrawler
 				Directory.CreateDirectory(WorkFolder);
 			}
 
-			var tmpHouseInfos = new List<HouseInfo>(); //未寫入CSV的暫存資料
-
 			//產生CSV檔
 			var csvHandler = new CsvFileHandler<HouseInfo>(Path.Combine(WorkFolder, "Output.csv"));
+			csvHandler.SetHeader(HouseInfo.Headers);
 			if (!csvHandler.IsExist())
 			{
-				csvHandler.CreateFileWithHeader(HouseInfo.Headers);
+				csvHandler.CreateFile();
 			}
 
 			//依地區進行檢索
@@ -206,49 +114,63 @@ namespace HouseCrawlerCSharp.WebCrawler
 				}
 
 				//若該地區處於佇列中, 開始搜尋區域內的House ID
-				if (ProcessData.Regions[i].Status == RegionStatus.QUEUE)
+				if (ProcessData.Regions[i].Status == RegionStatus.QUEUE || ProcessData.Regions[i].Status == RegionStatus.IN_LIST_PROCESS)
 				{
 					Logger.Info($@"{ProcessData.Regions[i].Name} > Start searching...");
 
-					ProcessData.HouseList = new List<HouseListItem>();
-					ProcessData.Cursor = 0;
+					if(ProcessData.Regions[i].Status == RegionStatus.QUEUE)
+					{
+						ProcessData.HouseList = new List<HouseListItem>();
+						ProcessData.Regions[i].Status = RegionStatus.IN_LIST_PROCESS;
+						ProcessData.Cursor = 1;
+					}
 
+					var page = CreateHouseListPage();
 					try
 					{
 						//Open house list page
-						HouseListPage.GoTo(ProcessData.Regions[i].SiteKey);
-
+						page.InitWebDriverHandler(30);
+						
 						while (true)
 						{
-							ProcessData.HouseList.AddRange(HouseListPage.GetHouseList());
+							page.GoTo(ProcessData.Regions[i].SiteKey, ProcessData.Cursor, ProcessData.TotalRows.ToString());
 
-							Logger.Trace($"Region: {ProcessData.Regions[i].Name}, Page: {HouseListPage.PageIndex}, Count: {ProcessData.HouseList.Count}");
+							//更新ProcessData
+							ProcessData.HouseList.AddRange(page.GetHouseList());
+							if(ProcessData.Cursor == 1)
+							{
+								ProcessData.TotalRows = page.GetHouseCount();
+							}
+							ProcessData.Cursor++;
 
-							Thread.Sleep(500);
+							//儲存當前進度資料
+							FileHelper.SaveProcessData(WorkFolder, ProcessData);
 
-							if (!HouseListPage.HasNextPage)
+							var timer = page.GetTimer();
+							Logger.Trace($"{ProcessData.Regions[i].Name}, Page:{page.PageIndex}, Count:{ProcessData.HouseList.Count} C={timer.Connect}ms,L={timer.PageReady}ms,D={timer.DataCapture}ms");
+
+							if (!page.HasNextPage)
 							{
 								break;
 							}
-
-							HouseListPage.NextPage();
 						}
 
 						//Remove duplicate house
 						ProcessData.HouseList = ProcessData.HouseList.GroupBy(x => x.HouseId).Select(y => y.First()).ToList();
 					}
-					catch (WebDriverException ex)
-					{
-						InfoLogger.Error($"HouseList|{ProcessData.Regions[i].Name}\n{ex}");
-						throw new WebDriverException(ex.Message, ex);
-					}
 					catch (Exception ex)
 					{
-						Logger.Error($"{ProcessData.Regions[i].Name} > Search house list failed!\n> {ex.Message}");
-						InfoLogger.Error($"HouseList|{ProcessData.Regions[i].Name}\n{ex}");
+						page.Quit();
+
+						errorLogger.Error($"HouseList|{ProcessData.Regions[i].Name}\n{ex}");
+						throw new WebDriverException(ex.Message, ex);
+					}
+					finally
+					{
+						page.Quit();
 					}
 
-					ProcessData.Regions[i].Status = RegionStatus.IN_PROCESS;
+					ProcessData.Regions[i].Status = RegionStatus.IN_DETAIL_PROCESS;
 
 					//儲存當前進度資料
 					FileHelper.SaveProcessData(WorkFolder, ProcessData);
@@ -258,63 +180,26 @@ namespace HouseCrawlerCSharp.WebCrawler
 					Logger.Info($"{ProcessData.Regions[i].Name} > Continue the unfinished parts...");
 				}
 
-				//Get house info
+				//Get house infos
 				for (; ProcessData.Cursor < ProcessData.HouseList.Count;)
 				{
-					var houseId = ProcessData.HouseList[ProcessData.Cursor].HouseId;
+					//一次處理多少筆
+					var poolCount = AppConfig.CrawlerOpts.AutoSaveData;
 
-					try
-					{
-						//Open house detail page & get house info
-						var info = HouseDetailPage.GoTo(houseId).GetHouseInfo(ProcessData.HouseList[ProcessData.Cursor].Extras);
+					//以多線程方式取得資料
+					var infos = GetHouseInfosByParallel(poolCount);
 
-						if (info != null)
-						{
-							info.CreatTime = DateTime.Now;
-							tmpHouseInfos.Add(info);
-							DownloadHousePhotos(info);
+					ProcessData.Cursor += poolCount;
 
-							Logger.Trace($"{houseId} > Get info successfully. ({ProcessData.Cursor + 1}/{ProcessData.HouseList.Count})");
-						}
-						else
-						{
-							Logger.Warn($"{houseId} > Get info failed!. ({ProcessData.Cursor + 1}/{ProcessData.HouseList.Count})\n> This case is not exist or archived.");
-							InfoLogger.Warn($"HouseDetail|{houseId}\nThis case is not exist or archived.");
-						}
-					}
-					catch (WebDriverException ex)
-					{
-						InfoLogger.Error($"HouseDetail|{houseId}\n{ex}");
-						throw new WebDriverException(ex.Message, ex);
-					}
-					catch (Exception ex)
-					{
-						//取資料失敗時, 立即儲存當前進度
-						ProcessData.FailedCases.Add(new FailedCase { HouseItem = ProcessData.HouseList[ProcessData.Cursor] });
-						FileHelper.SaveProcessData(WorkFolder, ProcessData);
+					//寫入CSV檔
+					WriteToCsv(csvHandler, infos);
 
-						Logger.Error($"{houseId} > Get info failed!. ({ProcessData.Cursor + 1}/{ProcessData.HouseList.Count})\n> {ex.Message}");
-						InfoLogger.Error($"HouseDetail|{houseId}\n{ex}");
-					}
-
-					ProcessData.Cursor++;
-
-					//每取得10筆資料或已完成此區域便寫入CSV
-					if (tmpHouseInfos.Count >= 10 || ProcessData.Cursor == ProcessData.HouseList.Count - 1)
-					{
-						//寫入CSV檔
-						WriteToCsv(csvHandler, tmpHouseInfos);
-
-						//清空暫存資料
-						tmpHouseInfos.Clear();
-
-						//儲存當前進度資料
-						FileHelper.SaveProcessData(WorkFolder, ProcessData);
-					}
+					//儲存當前進度資料
+					FileHelper.SaveProcessData(WorkFolder, ProcessData);
 				}
 
 				//嘗試取得曾經失敗的房屋資料
-				if(ProcessData.FailedCases.Count > 0)
+				if (ProcessData.FailedCases.Count > 0)
 				{
 					RetryFailedCases(csvHandler);
 				}
@@ -327,6 +212,81 @@ namespace HouseCrawlerCSharp.WebCrawler
 			}
 		}
 
+
+		/// <summary>
+		/// Get house info by muti-threads
+		/// </summary>
+		/// <param name="poolCount"></param>
+		/// <returns></returns>
+		private List<HouseInfo> GetHouseInfosByParallel(int poolCount)
+		{
+			var successInfos = new ConcurrentBag<HouseInfo>();
+			var failedCases = new ConcurrentBag<FailedCase>();
+			var counter = 0;
+
+			var options = new ParallelOptions
+			{
+				MaxDegreeOfParallelism = AppConfig.WebDriverOpts.MaxThreads
+			};
+
+			var size = ProcessData.Cursor + poolCount > ProcessData.HouseList.Count ? ProcessData.HouseList.Count - ProcessData.Cursor : poolCount;
+			Parallel.For(0, size, options, (i) =>
+			{
+				var houseItem = ProcessData.HouseList[ProcessData.Cursor + i];
+				var page = CreateHouseDetailPage();
+				var timer = page.GetTimer();
+
+				try
+				{
+					page.InitWebDriverHandler(30);
+
+					//Open house detail page & get house info
+					var info = page.GoTo(houseItem.HouseId).GetHouseInfo(ProcessData.HouseList[ProcessData.Cursor + i].Extras);
+
+					if (info != null)
+					{
+						info.CreatTime = DateTime.Now;
+						successInfos.Add(info);
+
+						var watcher = new Stopwatch();
+						watcher.Start();
+						DownloadHousePhotos(info);
+						watcher.Stop();
+
+						Logger.Trace($"{houseItem.HouseId} > Success ({ProcessData.Cursor + Interlocked.Increment(ref counter)}/{ProcessData.HouseList.Count}) C={timer.Connect}ms,L={timer.PageReady}ms,D={timer.DataCapture}ms,P={watcher.ElapsedMilliseconds}ms");
+					}
+					else
+					{
+						Logger.Warn($"{houseItem.HouseId} > Failed ({ProcessData.Cursor + Interlocked.Increment(ref counter)}/{ProcessData.HouseList.Count}) C={timer.Connect}ms,L={timer.PageReady}ms,D={timer.DataCapture}ms\n> This case is not exist or archived.");
+						errorLogger.Warn($"HouseDetail|{houseItem.HouseId}\nThis case is not exist or archived.");
+					}
+				}
+				catch (Exception ex)
+				{
+					page.Quit();
+
+					failedCases.Add(new FailedCase { HouseItem = ProcessData.HouseList[ProcessData.Cursor + i] });
+
+					Logger.Error($"{houseItem.HouseId} > Failed ({ProcessData.Cursor + Interlocked.Increment(ref counter)}/{ProcessData.HouseList.Count}) C={timer.Connect}|L={timer.PageReady}|D={timer.DataCapture}\n> {ex.Message}");
+					errorLogger.Error($"HouseDetail|{houseItem.HouseId}\n{ex}");
+				}
+				finally
+				{
+					page.Quit();
+				}
+			});
+
+			ProcessData.FailedCases.AddRange(failedCases.ToList());
+
+			return successInfos.ToList();
+		}
+
+
+		/// <summary>
+		/// Download house photos
+		/// </summary>
+		/// <param name="info"></param>
+		/// <returns></returns>
 		private HouseInfo DownloadHousePhotos(HouseInfo info)
 		{
 			info.PhotoDirectory = Path.Combine(WorkFolder, "Photos", info.Id);
@@ -356,6 +316,11 @@ namespace HouseCrawlerCSharp.WebCrawler
 			return info;
 		}
 
+		/// <summary>
+		/// Write infos to CSV when CSV is not locked.
+		/// </summary>
+		/// <param name="csvHandler"></param>
+		/// <param name="infos"></param>
 		private void WriteToCsv(CsvFileHandler<HouseInfo> csvHandler, List<HouseInfo> infos)
 		{
 			while (true)
@@ -375,52 +340,73 @@ namespace HouseCrawlerCSharp.WebCrawler
 			}
 		}
 
+
+		/// <summary>
+		/// Re-scan house info that faild before.
+		/// </summary>
+		/// <param name="csvHandler"></param>
 		private void RetryFailedCases(CsvFileHandler<HouseInfo> csvHandler)
 		{
 			Logger.Info($@"Retry searching failed cases...");
 
-			var retryInfos = new List<HouseInfo>();
-			for (var cIndex = ProcessData.FailedCases.Count - 1; cIndex >= 0; cIndex--)
-			{
-				ProcessData.FailedCases[cIndex].RetryCount++;
+			var failedCases = new ConcurrentBag<FailedCase>();
+			var successInfos = new ConcurrentBag<HouseInfo>();
 
-				var houseId = ProcessData.FailedCases[cIndex].HouseItem.HouseId;
-				var retryCount = ProcessData.FailedCases[cIndex].RetryCount;
+			Parallel.For(0, ProcessData.FailedCases.Count, (i) =>
+			{
+				var houseId = ProcessData.FailedCases[i].HouseItem.HouseId;
+				var retryCount = ProcessData.FailedCases[i].RetryCount + 1;
+				var page = CreateHouseDetailPage();
+				var timer = page.GetTimer();
 
 				try
 				{
-					var info = HouseDetailPage.GoTo(houseId).GetHouseInfo(ProcessData.FailedCases[cIndex].HouseItem.Extras);
+					page.InitWebDriverHandler(30); //Pageload timeout改為30秒
+
+					var info = page.GoTo(houseId).GetHouseInfo(ProcessData.FailedCases[i].HouseItem.Extras);
 
 					if (info != null)
 					{
 						info.CreatTime = DateTime.Now;
-						retryInfos.Add(info);
+						successInfos.Add(info);
+
+						var watcher = new Stopwatch();
+						watcher.Start();
 						DownloadHousePhotos(info);
-						Logger.Trace($"{houseId} > Get info successfully. (Retry: {retryCount})");
+						watcher.Stop();
+
+						Logger.Trace($"{houseId} > Successfully (Retry: {retryCount}) C={timer.Connect}ms,L={timer.PageReady}ms,D={timer.DataCapture}ms,P={watcher.ElapsedMilliseconds}ms");
 					}
 					else
 					{
-						Logger.Warn($"{houseId} > Get info failed!. (Retry: {retryCount})\n> This case is not exist or archived.");
+						Logger.Warn($"{houseId} > Failed (Retry: {retryCount}) C={timer.Connect}ms,L={timer.PageReady}ms,D={timer.DataCapture}ms\n> This case is not exist or archived.");
 					}
-
-					//從失敗案例中移除
-					ProcessData.FailedCases.RemoveAt(cIndex);
-				}
-				catch (WebDriverException ex)
-				{
-					throw ex;
 				}
 				catch (Exception ex)
 				{
-					Logger.Error($"{houseId} > Get info failed!. (Retry: {retryCount})\n> {ex.Message}");
-					InfoLogger.Error($"HouseDetail|{houseId}|Retry={retryCount}\n{ex}");
+					page.Quit();
+
+					failedCases.Add(new FailedCase
+					{
+						HouseItem = ProcessData.FailedCases[i].HouseItem,
+						RetryCount = retryCount
+					});
+
+					Logger.Error($"{houseId} > Get info failed!. (Retry: {retryCount}) C={timer.Connect}|L={timer.PageReady}|D={timer.DataCapture}\n> {ex.Message}");
+					errorLogger.Error($"HouseDetail|{houseId}|Retry={retryCount}\n{ex}");
 				}
-			}
+				finally
+				{
+					page.Quit();
+				}
+			});
+
+			ProcessData.FailedCases = failedCases.ToList();
 
 			//寫入CSV檔
-			if (retryInfos.Count > 0)
+			if (successInfos.Count > 0)
 			{
-				WriteToCsv(csvHandler, retryInfos);
+				WriteToCsv(csvHandler, successInfos.ToList());
 			}
 		}
 	}

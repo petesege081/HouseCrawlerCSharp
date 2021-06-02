@@ -11,7 +11,7 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 {
 	class HouseListPage : BaseHouseListPageModule
 	{
-		protected override string GetHouseListLink(string regionKey, int? orderBy)
+		protected override string GetHouseListLink(string regionKey, int page, string extraParam, int? orderBy)
 		{
 			var orderStr = orderBy switch
 			{
@@ -25,7 +25,8 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 			{
 				url += $"{orderStr}/";
 			}
-			url += "index";
+
+			url += page == 1 ? "index" : $"{page}";
 
 			return url;
 		}
@@ -33,7 +34,6 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 		protected override void WaitForPageLoaded()
 		{
 			//等待Loading圖片消失
-			Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".buy-list-frame > .loading-frame-lc")));
 			Waiter.Until(cond =>
 			{
 				try
@@ -83,18 +83,24 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 			return this;
 		}
 
-		protected override int GetHouseCount()
+		public override int GetHouseCount()
 		{
-			var listFrame = Driver.FindElement(By.CssSelector(".buy-list-frame"));
-			var parent = listFrame.FindElement(By.XPath("./.."));
-			var totalStr = parent.FindElement(By.CssSelector(":first-child .d-lg-none")).GetAttribute("innerHTML").RemoveTag(true);
+			if(HouseCount < 0){
+				var listFrame = Driver.FindElement(By.CssSelector(".buy-list-frame"));
+				var parent = listFrame.FindElement(By.XPath("./.."));
+				var totalStr = parent.FindElement(By.CssSelector(":first-child .d-lg-none")).GetAttribute("innerHTML").RemoveTag(true);
 
-			var match = Regex.Match(totalStr, @"(\d+,)*\d+");
-			return match.Success ? int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands) : 0;
+				var match = Regex.Match(totalStr, @"(\d+,)*\d+");
+				HouseCount = match.Success ? int.Parse(match.Groups[0].Value, NumberStyles.AllowThousands) : 0;
+			}
+
+			return HouseCount;
 		}
 
 		public override List<HouseListItem> GetHouseList()
 		{
+			Watcher.Restart();
+
 			List<HouseListItem> houseList = new List<HouseListItem>();
 
 			var cards = Driver.FindElements(By.CssSelector(".buy-list-frame > .buy-list-item > a"));
@@ -102,20 +108,6 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 			Match match;
 			foreach (var card in cards)
 			{
-				//跳過預售屋
-				var addrItems = card.FindElements(By.CssSelector(".LongInfoCard_Type_Address > span"));
-				var isPreSale = false;
-				foreach(var item in addrItems)
-				{
-					if(item.Text.Trim() == "預售")
-					{
-						isPreSale = true;
-						break;
-					}
-				}
-
-				if (isPreSale) continue;
-
 				match = Regex.Match(card.GetAttribute("href"), @"(?<=/buy/house/).*?(?=/)");
 
 				if(match.Success)
@@ -123,6 +115,9 @@ namespace HouseCrawlerCSharp.WebCrawler.Sinyi
 					houseList.Add(new HouseListItem { HouseId = match.Groups[0].Value });
 				}
 			}
+
+			Watcher.Stop();
+			Timer.DataCapture = Watcher.ElapsedMilliseconds;
 
 			return houseList;
 		}

@@ -1,14 +1,16 @@
-﻿using HouseCrawlerCSharp.WebCrawler.BaseModule;
+﻿using HouseCrawlerCSharp.Library;
+using HouseCrawlerCSharp.WebCrawler.BaseModule;
+using System;
 using System.Collections.Generic;
 
 namespace HouseCrawlerCSharp.Model
 {
-	abstract class BaseHouseDetailPageModule : BaseWebDriver
+	abstract class BaseHouseDetailPageModule : BasePageModule
 	{
 		protected string HouseId;
 		protected string HouseLink;
 		protected bool IsHouseExist;
-
+				
 		/// <summary>
 		/// Open house detail page.
 		/// </summary>
@@ -18,13 +20,22 @@ namespace HouseCrawlerCSharp.Model
 			HouseId = houseId;
 			HouseLink = GetHouseDetailLink(houseId);
 
+			Watcher.Start();
+
+			//Open page
 			Driver.Navigate().GoToUrl(HouseLink);
 
+			Watcher.Stop();
+			Timer.Connect = Watcher.ElapsedMilliseconds;
+			Watcher.Restart();
+
+			//Wait fo page ready
 			WaitForPageLoaded();
-
 			IsHouseExist = CheckHouseExist();
-
 			AfterPageLoadedEvent();
+
+			Watcher.Stop();
+			Timer.PageReady = Watcher.ElapsedMilliseconds;
 
 			return this;
 		}

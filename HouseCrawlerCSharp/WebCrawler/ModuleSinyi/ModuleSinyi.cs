@@ -8,14 +8,14 @@ namespace HouseCrawlerCSharp.WebCrawler
 {
 	class ModuleSinyi : BaseCrawlerModule
 	{
-		protected override BaseHouseListPageModule InitHouseListPage()
+		public override BaseHouseListPageModule CreateHouseListPage()
 		{
-			return HouseListPage = new HouseListPage();
+			return new HouseListPage();
 		}
 
-		protected override BaseHouseDetailPageModule InitHouseDetailPage()
+		public override BaseHouseDetailPageModule CreateHouseDetailPage()
 		{
-			return HouseDetailPage = new HouseDetailPage();
+			return new HouseDetailPage();
 		}
 
 		protected override string GetModuleType()

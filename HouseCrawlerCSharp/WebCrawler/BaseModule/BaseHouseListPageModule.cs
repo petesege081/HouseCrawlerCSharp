@@ -3,18 +3,31 @@ using System.Collections.Generic;
 
 namespace HouseCrawlerCSharp.Model
 {
-	abstract class BaseHouseListPageModule : BaseWebDriver
+	abstract class BaseHouseListPageModule : BasePageModule
 	{
 		public int PageIndex = 0;
+		protected int HouseCount = -1;
 		public bool HasNextPage;
 		public int OrderBy = HouseOrderBy.PUBLISH_DESC; //預設排序為刊登日期新到舊
 
-		public BaseHouseListPageModule GoTo(string regionKey)
+		public BaseHouseListPageModule GoTo(string regionKey, int page, string extraParam)
 		{
-			Driver.Navigate().GoToUrl(GetHouseListLink(regionKey, OrderBy));
+			Watcher.Start();
+
+			//Open page
+			Driver.Navigate().GoToUrl(GetHouseListLink(regionKey, page, extraParam, OrderBy));
+
+			Watcher.Stop();
+			Timer.Connect = Watcher.ElapsedMilliseconds / 1000;
+			Watcher.Restart();
+
+			// Wait for page ready
 			PageIndex = 0;
 			WaitForPageLoaded();
 			AfterPageLoadedEvent();
+
+			Watcher.Stop();
+			Timer.PageReady = Watcher.ElapsedMilliseconds / 1000;
 
 			return this;
 		}
@@ -24,7 +37,7 @@ namespace HouseCrawlerCSharp.Model
 		/// </summary>
 		/// <param name="houseId"></param>
 		/// <returns>URL string</returns>
-		protected abstract string GetHouseListLink(string regionKey, int? orderBy);
+		protected abstract string GetHouseListLink(string regionKey, int page, string extraParam, int? orderBy);
 
 		/// <summary>
 		/// Wait for list page is ready.
@@ -45,7 +58,7 @@ namespace HouseCrawlerCSharp.Model
 		/// Get house count in this area.
 		/// </summary>
 		/// <returns></returns>
-		protected abstract int GetHouseCount();
+		public abstract int GetHouseCount();
 
 		/// <summary>
 		/// Scan all house ID in house list

@@ -9,12 +9,19 @@ namespace HouseCrawlerCSharp.Library
 	{
 		private readonly FileHelperEngine<T> CsvEngine;
 		private readonly string CsvFilePath;
+		private string[] HeaderColumns;
 
 		public CsvFileHandler(string csvFilePath){
 			CsvFilePath = csvFilePath;
 			CsvEngine = new FileHelperEngine<T>();
 			Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 		}
+
+		public void SetHeader(string[] headerColumns)
+		{
+			HeaderColumns = headerColumns;
+		}
+
 		public bool IsExist(){
 			return File.Exists(CsvFilePath);
 		}
@@ -34,6 +41,12 @@ namespace HouseCrawlerCSharp.Library
 			return false;
 		}
 
+		public void CreateFile()
+		{
+			using var sw = new StreamWriter(CsvFilePath, false, Encoding.GetEncoding("utf-8"));
+			sw.WriteLine(string.Join(",", HeaderColumns));
+			sw.Close();
+		}
 
 		public void CreateFileWithHeader(string[] headerColumns)
 		{
@@ -44,6 +57,10 @@ namespace HouseCrawlerCSharp.Library
 
 		public void AppendToFile(List<T> datas)
 		{
+			if(!IsExist()) {
+				CreateFile();
+			}
+
 			using var sw = new StreamWriter(CsvFilePath, true, Encoding.GetEncoding("utf-8"));
 			sw.Write(CsvEngine.WriteString(datas));
 			sw.Close();

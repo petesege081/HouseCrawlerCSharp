@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace HouseCrawlerCSharp.WebCrawler.YungChing
 {
@@ -26,13 +27,34 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 		protected override void AfterPageLoadedEvent()
 		{
 			//Click google map
+			Js.ExecuteScript("window.scrollTo(0, 250)");
 			Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".m-house-photos-handlers > .house-info-img.carousel-map > a")));
 			Driver.FindElement(By.CssSelector(".m-house-photos-handlers > .house-info-img.carousel-map > a")).Click();
-			Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".house-photos-main-map-wrap.is-active > .house-photos-main-map")));
-			Driver.FindElement(By.CssSelector(".house-photos-main-map-wrap.is-active > .house-photos-main-map")).Click();
+
+			Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".house-photos-main-map-wrap.is-active img")));
+			Driver.FindElement(By.CssSelector(".house-photos-main-map-wrap.is-active img")).Click();
 
 			//Wait for google map init
-			Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".house-photos-main-map-wrap.is-active a[href*='maps.google.com/maps']")));
+			var originTimeout = Waiter.Timeout;
+			Waiter.Timeout = TimeSpan.FromSeconds(2);
+			try
+			{
+				Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".house-photos-main-map-wrap.is-active a[href*='maps.google.com/maps']")));
+			}
+			catch (Exception)
+			{
+				//有時候不會轉換成Google map, 重新再點一次
+				Driver.FindElement(By.CssSelector(".m-house-photos-handlers > .house-info-img.layout-img > a")).Click();
+				Thread.Sleep(100);
+				Driver.FindElement(By.CssSelector(".m-house-photos-handlers > .house-info-img.carousel-map > a")).Click();
+				Thread.Sleep(100);
+				Driver.FindElement(By.CssSelector(".house-photos-main-map-wrap.is-active img")).Click();
+				Waiter.Until(ExpectedConditions.ElementExists(By.CssSelector(".house-photos-main-map-wrap.is-active a[href*='maps.google.com/maps']")));
+			}
+			finally
+			{
+				Waiter.Timeout = originTimeout;
+			}
 		}
 
 		protected override bool CheckHouseExist()
@@ -43,6 +65,8 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 		public override HouseInfo GetHouseInfo(Dictionary<string, object> extras = null)
 		{
 			if (!IsHouseExist) return null;
+
+			Watcher.Restart();
 
 			HouseInfo info = new HouseInfo
 			{
@@ -110,7 +134,7 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 								}
 							}
 
-							//非單一樓層時, 取最高樓層
+							//開始樓層
 							var fromToArr = floorArr[0].Split("~");
 							match = Regex.Match(fromToArr[0], numberPattern);
 							if (match.Success)
@@ -131,6 +155,7 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 								}
 							}
 
+							//結束樓層
 							match = Regex.Match(fromToArr[1], numberPattern);
 							if (match.Success)
 							{
@@ -176,8 +201,11 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 
 			//經緯度
 			var latLng = Driver.FindElement(By.CssSelector(".house-photos-main-map a[href*='maps.google.com/maps']")).GetAttribute("href").ToLatLng();
-			info.Lat = latLng.Latitude;
-			info.Lng = latLng.Longitude;
+			if (latLng != null)
+			{
+				info.Lat = latLng.Latitude;
+				info.Lng = latLng.Longitude;
+			}
 
 			//House detail box
 			var sections = Driver.FindElements(By.CssSelector(".m-house-detail-block.detail-data > section"));
@@ -322,6 +350,9 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 					}
 				}
 			}
+
+			Watcher.Stop();
+			Timer.DataCapture = Watcher.ElapsedMilliseconds;
 
 			return info;
 		}
