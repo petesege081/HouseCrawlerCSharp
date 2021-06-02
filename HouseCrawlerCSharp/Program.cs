@@ -14,25 +14,25 @@ namespace HouseCrawlerCSharp
 			var Logger = LogManager.GetLogger("Default");
 			var errorLogger = LogManager.GetLogger("CrawlerError");
 
-			//取得模組類型
-			var type = (CrawlerModuleType)Enum.Parse(typeof(CrawlerModuleType), CrawlerConfig.Config["CrawlerOptions:ModuleType"]);
+			//初始化AppConfig
+			AppConfig.Init();
 
 			//是否最上層執行
-			if (bool.Parse(CrawlerConfig.Config["ApplicationOptions:OnTop"])) {
+			if (AppConfig.ConsoleOpts.OnTop) {
 				ConsoleWindowHandler.SetConsoleWindowOnTop();
 			}
 
 			//調整Console視窗大小並置於螢幕右側
-			var width = int.Parse(CrawlerConfig.Config["ApplicationOptions:WindowWidth"]);
-			var hight = int.Parse(CrawlerConfig.Config["ApplicationOptions:WindowHight"]);
+			var width = AppConfig.ConsoleOpts.WindowWidth;
+			var hight = AppConfig.ConsoleOpts.WindowHight;
 			width = width > Console.BufferWidth ? Console.BufferWidth : width;
 			hight = hight > 60 ? 60 : hight;
 			Console.SetWindowSize(width, hight);
-			ConsoleWindowHandler.SetConsoleWindowPosition((int)type - 1);
+			ConsoleWindowHandler.SetConsoleWindowPosition((int)AppConfig.CrawlerOpts.ModuleType);
 
 			//產生要執行的模組
 			BaseCrawlerModule crawlerModule = null;
-			switch (type)
+			switch (AppConfig.CrawlerOpts.ModuleType) 
 			{
 				case CrawlerModuleType._591:
 					crawlerModule = new Module591();
@@ -50,12 +50,13 @@ namespace HouseCrawlerCSharp
 					Logger.Error("Module type is invalid.");
 					return;
 			}
-			crawlerModule.SetFolder(CrawlerConfig.Config["CrawlerOptions:WorkFolder"]);
+			crawlerModule.SetFolder(AppConfig.CrawlerOpts.WorkFolder);
 
 			//關閉程式時同時關閉WebDriver
 			Console.TreatControlCAsInput = true;
 			AppDomain.CurrentDomain.ProcessExit += new EventHandler((s, e) =>
 			{
+				//WebDriverHandler.CloseAllBrowser();
 				KillAllDriverProcess();
 			});
 

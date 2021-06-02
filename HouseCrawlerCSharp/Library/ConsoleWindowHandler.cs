@@ -145,9 +145,9 @@ namespace HouseCrawlerCSharp.Library
             wp.NormalPosition = new RECT()
             {
                 Left = mi.rcWork.Right - (wp.NormalPosition.Right - wp.NormalPosition.Left),
-                Top = poistion * outputHight,
+                Top = (poistion - 1) * outputHight,
                 Right = fudgeOffset + mi.rcWork.Right,
-                Bottom = fudgeOffset + (poistion + 1) * outputHight
+                Bottom = fudgeOffset + poistion * outputHight
             };
 
             // Place the window at the new position.
