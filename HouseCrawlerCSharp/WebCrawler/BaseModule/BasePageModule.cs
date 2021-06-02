@@ -8,6 +8,7 @@ namespace HouseCrawlerCSharp.WebCrawler.BaseModule
 {
 	abstract class BasePageModule
 	{
+		private WebDriverHandler Handler;
 		protected IWebDriver Driver;
 		protected WebDriverWait Waiter;
 		protected IJavaScriptExecutor Js;
@@ -21,10 +22,10 @@ namespace HouseCrawlerCSharp.WebCrawler.BaseModule
 
 		public virtual void InitWebDriverHandler(int pageLoadTimeout = 15)
 		{
-			var handler = WebDriverHandler.CreateDefaultHandler(pageLoadTimeout);
-			Driver = handler.WebDriver;
-			Waiter = handler.Waiter;
-			Js = handler.Js;
+			Handler = WebDriverHandler.CreateDefaultHandler(pageLoadTimeout);
+			Driver = Handler.WebDriver;
+			Waiter = Handler.Waiter;
+			Js = Handler.Js;
 
 			Watcher = new Stopwatch();
 		}
@@ -41,23 +42,7 @@ namespace HouseCrawlerCSharp.WebCrawler.BaseModule
 		/// </summary>
 		public virtual void Quit()
 		{
-			if(Driver == null)
-			{
-				return;
-			}
-
-			try
-			{
-				Driver.Close();
-			}
-			catch (Exception)
-			{
-
-			}
-			finally
-			{
-				Driver.Quit();
-			}
+			if (Handler != null) Handler.Quit();
 		}
 	}
 

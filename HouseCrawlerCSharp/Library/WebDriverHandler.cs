@@ -5,8 +5,10 @@ using OpenQA.Selenium.Firefox;
 using OpenQA.Selenium.Remote;
 using OpenQA.Selenium.Support.UI;
 using System;
+using System.Collections.Concurrent;
 using System.Drawing;
 using System.IO;
+using System.Threading;
 
 namespace HouseCrawlerCSharp.Library
 {
@@ -15,21 +17,61 @@ namespace HouseCrawlerCSharp.Library
 		public RemoteWebDriver WebDriver;
 		public WebDriverWait Waiter;
 		public IJavaScriptExecutor Js;
+		private int Id;
+
+		private static ConcurrentDictionary<int, WebDriverHandler> DriverCollections = new ConcurrentDictionary<int, WebDriverHandler>();
+		private static int DriverCounter = 0;
+
+		public void Quit(){
+			if (WebDriver == null)
+			{
+				return;
+			}
+
+			try
+			{
+				WebDriver.Close();
+			}
+			catch (Exception)
+			{
+
+			}
+
+			try
+			{
+				WebDriver.Quit();
+			}
+			catch (Exception)
+			{
+
+			}
+
+			DriverCollections.TryRemove(Id, out WebDriverHandler retiredVal);
+		}
+
+		public static void CloseAllBrowser(){
+			foreach (var dic in DriverCollections)
+			{
+				if(dic.Value != null)
+				{
+					dic.Value.Quit();
+				}
+			}
+		}
 
 		public static string GetWebDriverFileName()
 		{
 			string name = null;
-			var type = (WebDriverType)Enum.Parse(typeof(WebDriverType), CrawlerConfig.Config["WebDriverOptions:DriverType"]);
-			switch (type)
+			switch (AppConfig.WebDriverOpts.DriverType)
 			{
 				case WebDriverType.Chrome:
-					name = Path.GetFileNameWithoutExtension(CrawlerConfig.Config["WebDriverOptions:ChromeDriverPath"]);
+					name = Path.GetFileNameWithoutExtension(AppConfig.WebDriverOpts.ChromeDriverPath);
 					break;
 				case WebDriverType.Edge:
-					name = Path.GetFileNameWithoutExtension(CrawlerConfig.Config["WebDriverOptions:EdgeDriverPath"]);
+					name = Path.GetFileNameWithoutExtension(AppConfig.WebDriverOpts.EdgeDriverPath);
 					break;
 				case WebDriverType.FireFox:
-					name = Path.GetFileNameWithoutExtension(CrawlerConfig.Config["WebDriverOptions:FirefoxDriverPath"]);
+					name = Path.GetFileNameWithoutExtension(AppConfig.WebDriverOpts.FirefoxDriverPath);
 					break;
 			}
 
@@ -37,18 +79,17 @@ namespace HouseCrawlerCSharp.Library
 		}
 
 		public static WebDriverHandler CreateDefaultHandler(int pageLoadTimeout = 15){
-			var handler = new WebDriverHandler();
+			var handler = new WebDriverHandler
+			{
+				Id = Interlocked.Increment(ref DriverCounter)
+			};
 
-			//瀏覽器大小
-			int w, h;
-			w = string.IsNullOrWhiteSpace(CrawlerConfig.Config["WebDriverOptions:BrowserWidth"]) ? 1024 : int.Parse(CrawlerConfig.Config["WebDriverOptions:BrowserWidth"]);
-			h = string.IsNullOrWhiteSpace(CrawlerConfig.Config["WebDriverOptions:BrowserHight"]) ? 768 : int.Parse(CrawlerConfig.Config["WebDriverOptions:BrowserHight"]);
+			DriverCollections.TryAdd(handler.Id, handler);
 
-			var type = (WebDriverType)Enum.Parse(typeof(WebDriverType), CrawlerConfig.Config["WebDriverOptions:DriverType"]);
-			switch (type)
+			switch (AppConfig.WebDriverOpts.DriverType)
 			{
 				case WebDriverType.Chrome:
-					var chromeService = ChromeDriverService.CreateDefaultService(Path.GetDirectoryName(CrawlerConfig.Config["WebDriverOptions:ChromeDriverPath"]), Path.GetFileName(CrawlerConfig.Config["WebDriverOptions:ChromeDriverPath"]));
+					var chromeService = ChromeDriverService.CreateDefaultService(Path.GetDirectoryName(AppConfig.WebDriverOpts.ChromeDriverPath), Path.GetFileName(AppConfig.WebDriverOpts.ChromeDriverPath));
 					chromeService.HideCommandPromptWindow = true;
 
 					var chromeOpts = new ChromeOptions
@@ -56,12 +97,11 @@ namespace HouseCrawlerCSharp.Library
 						AcceptInsecureCertificates = true
 					};
 					chromeOpts.AddArgument("no-sandbox"); //最高權限
-					chromeOpts.AddArgument($"window-size={Math.Max(w, 1024)},{Math.Max(h, 768)}");
 
 					handler.WebDriver = new ChromeDriver(chromeService, chromeOpts);
 					break;
 				case WebDriverType.Edge:
-					var edgeService = EdgeDriverService.CreateDefaultService(Path.GetDirectoryName(CrawlerConfig.Config["WebDriverOptions:EdgeDriverPath"]), Path.GetFileName(CrawlerConfig.Config["WebDriverOptions:EdgeDriverPath"]));
+					var edgeService = EdgeDriverService.CreateDefaultService(Path.GetDirectoryName(AppConfig.WebDriverOpts.EdgeDriverPath), Path.GetFileName(AppConfig.WebDriverOpts.EdgeDriverPath));
 					edgeService.HideCommandPromptWindow = true;
 
 					var edgeOpts = new EdgeOptions
@@ -69,12 +109,11 @@ namespace HouseCrawlerCSharp.Library
 						AcceptInsecureCertificates = true
 					};
 					edgeOpts.AddAdditionalCapability("no-sandbox", true);
-					edgeOpts.AddAdditionalCapability("window-size", $"{Math.Max(w, 1024)},{Math.Max(h, 768)}");
 
 					handler.WebDriver = new EdgeDriver(edgeService, edgeOpts);
 					break;
 				case WebDriverType.FireFox:
-					var firefoxService = FirefoxDriverService.CreateDefaultService(Path.GetDirectoryName(CrawlerConfig.Config["WebDriverOptions:FirefoxDriverPath"]), Path.GetFileName(CrawlerConfig.Config["WebDriverOptions:FirefoxDriverPath"]));
+					var firefoxService = FirefoxDriverService.CreateDefaultService(Path.GetDirectoryName(AppConfig.WebDriverOpts.FirefoxDriverPath), Path.GetFileName(AppConfig.WebDriverOpts.FirefoxDriverPath));
 					firefoxService.Host = "::1"; //使用IPv6以提升速度
 					firefoxService.HideCommandPromptWindow = true;
 
@@ -83,7 +122,6 @@ namespace HouseCrawlerCSharp.Library
 						AcceptInsecureCertificates = true
 					};
 					opts.AddArgument("no-sandbox");
-					opts.AddArgument($"window-size={Math.Max(w, 1024)},{Math.Max(h, 768)}");
 					
 					handler.WebDriver = new FirefoxDriver(firefoxService, opts);
 					break;
@@ -95,18 +133,13 @@ namespace HouseCrawlerCSharp.Library
 
 			var rd = new Random();
 			handler.WebDriver.Manage().Window.Position = new Point(rd.Next(0, 20), rd.Next(0, 20));
+			handler.WebDriver.Manage().Window.Size = new Size(Math.Max(AppConfig.WebDriverOpts.BrowserWidth, 1024), Math.Max(AppConfig.WebDriverOpts.BrowserHight, 768));
+
 
 			handler.Waiter = new WebDriverWait(handler.WebDriver, TimeSpan.FromSeconds(10));
 			handler.Js = handler.WebDriver;
 
 			return handler;
 		}
-	}
-
-	enum WebDriverType : int
-	{
-		Chrome = 1,
-		Edge = 2,
-		FireFox = 3
 	}
 }

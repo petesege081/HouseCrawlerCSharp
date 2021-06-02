@@ -92,9 +92,10 @@ namespace HouseCrawlerCSharp.WebCrawler
 
 			//產生CSV檔
 			var csvHandler = new CsvFileHandler<HouseInfo>(Path.Combine(WorkFolder, "Output.csv"));
+			csvHandler.SetHeader(HouseInfo.Headers);
 			if (!csvHandler.IsExist())
 			{
-				csvHandler.CreateFileWithHeader(HouseInfo.Headers);
+				csvHandler.CreateFile();
 			}
 
 			//依地區進行檢索
@@ -157,13 +158,6 @@ namespace HouseCrawlerCSharp.WebCrawler
 						//Remove duplicate house
 						ProcessData.HouseList = ProcessData.HouseList.GroupBy(x => x.HouseId).Select(y => y.First()).ToList();
 					}
-					catch (WebDriverException ex)
-					{
-						page.Quit();
-
-						errorLogger.Error($"HouseList|{ProcessData.Regions[i].Name}\n{ex}");
-						throw new WebDriverException(ex.Message, ex);
-					}
 					catch (Exception ex)
 					{
 						page.Quit();
@@ -189,8 +183,8 @@ namespace HouseCrawlerCSharp.WebCrawler
 				//Get house infos
 				for (; ProcessData.Cursor < ProcessData.HouseList.Count;)
 				{
-					//一次處理30筆
-					var poolCount = 30;
+					//一次處理多少筆
+					var poolCount = AppConfig.CrawlerOpts.AutoSaveData;
 
 					//以多線程方式取得資料
 					var infos = GetHouseInfosByParallel(poolCount);
@@ -232,7 +226,7 @@ namespace HouseCrawlerCSharp.WebCrawler
 
 			var options = new ParallelOptions
 			{
-				MaxDegreeOfParallelism = int.Parse(CrawlerConfig.Config["WebDriverOptions:MaxThreads"])
+				MaxDegreeOfParallelism = AppConfig.WebDriverOpts.MaxThreads
 			};
 
 			var size = ProcessData.Cursor + poolCount > ProcessData.HouseList.Count ? ProcessData.HouseList.Count - ProcessData.Cursor : poolCount;
