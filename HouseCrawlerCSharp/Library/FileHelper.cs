@@ -45,8 +45,7 @@ namespace HouseCrawlerCSharp.Library
 
                 //與舊的進度檔變更為暫存
                 if (File.Exists(oldFile)){
-                    File.Delete(tmpFile);
-                    File.Move(oldFile, tmpFile);
+                    File.Move(oldFile, tmpFile, true);
                 }
                 TempProcessFileName = tmpName;
 
@@ -76,12 +75,16 @@ namespace HouseCrawlerCSharp.Library
                 if (File.Exists(tmpFile))
                 {
                     var originFile = Path.Combine(dir, ProcessFileName);
-                    File.Delete(originFile);
-                    File.Move(tmpFile, originFile);
+                    File.Move(tmpFile, originFile, true);
                 }
             }
 
-            File.Delete(Path.Combine(dir, NewProcessFileName));
+            var newFile = Path.Combine(dir, NewProcessFileName);
+            if (File.Exists(newFile))
+            {
+                File.Delete(newFile);
+            }
+            
 
             TempProcessFileName = null;
         }
