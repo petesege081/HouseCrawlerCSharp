@@ -61,6 +61,10 @@ namespace HouseCrawlerCSharp.WebCrawler
 			return this;
 		}
 
+		public string GetWorkFolder(){
+			return WorkFolder;
+		}
+
 		///<summary>
 		///Set the sort option for searching house list.
 		///</summary>

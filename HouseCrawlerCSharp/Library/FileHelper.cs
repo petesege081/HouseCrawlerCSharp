@@ -24,21 +24,58 @@ namespace HouseCrawlerCSharp.Library
         }
 
         private const string ProcessFileName = "process.json";
+        private const string NewProcessFileName = "process_new.json";
+        private static string TempProcessFileName = null;
 
         public static bool SaveProcessData(string dir, CrawlerProcessData data)
         {
+            var tmpFile = Path.Combine(dir, $"{Guid.NewGuid()}_{ProcessFileName}");
+
             try
             {
-                using var sw = new StreamWriter(Path.Combine(dir, ProcessFileName), false, Encoding.GetEncoding("utf-8"));
+                var oldFile = Path.Combine(dir, ProcessFileName);
+                var newFile = Path.Combine(dir, NewProcessFileName);
+
+                //建立新的進度檔
+                using var sw = new StreamWriter(newFile, false, Encoding.GetEncoding("utf-8"));
                 sw.WriteLine(JsonConvert.SerializeObject(data));
                 sw.Close();
+
+                //與舊的進度檔變更為暫存
+                File.Delete(tmpFile);
+                File.Move(oldFile, tmpFile);
+                TempProcessFileName = tmpFile;
+
+                //將新的進度檔改為當前進度檔
+                File.Move(newFile, oldFile);
+
+                //刪除暫存進度檔
+                File.Delete(tmpFile);
+
 
                 return true;
             }
             catch (Exception)
             {
+                RecoverProcessData(dir);
                 return false;
             }
+            finally
+            {
+                TempProcessFileName = null;
+            }
+        }
+
+        public static void RecoverProcessData(string dir){
+            if(TempProcessFileName == null)
+            {
+                return;
+			}
+
+            File.Delete(Path.Combine(dir, ProcessFileName));
+            File.Move(Path.Combine(dir, TempProcessFileName), Path.Combine(dir, ProcessFileName));
+
+            TempProcessFileName = null;
         }
 
         public static CrawlerProcessData ReadProcessData(string dir)

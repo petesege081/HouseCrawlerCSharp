@@ -57,6 +57,7 @@ namespace HouseCrawlerCSharp
 			AppDomain.CurrentDomain.ProcessExit += new EventHandler((s, e) =>
 			{
 				//WebDriverHandler.CloseAllBrowser();
+				FileHelper.RecoverProcessData(crawlerModule.GetWorkFolder());
 				KillAllDriverProcess();
 			});
 
