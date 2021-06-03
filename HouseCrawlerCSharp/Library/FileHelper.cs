@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Text;
+using System.Threading;
 
 namespace HouseCrawlerCSharp.Library
 {
@@ -29,7 +30,8 @@ namespace HouseCrawlerCSharp.Library
 
         public static bool SaveProcessData(string dir, CrawlerProcessData data)
         {
-            var tmpFile = Path.Combine(dir, $"{Guid.NewGuid()}_{ProcessFileName}");
+            var tmpName = $"{Guid.NewGuid()}_{ProcessFileName}";
+            var tmpFile = Path.Combine(dir, tmpName);
 
             try
             {
@@ -42,16 +44,17 @@ namespace HouseCrawlerCSharp.Library
                 sw.Close();
 
                 //與舊的進度檔變更為暫存
-                File.Delete(tmpFile);
-                File.Move(oldFile, tmpFile);
-                TempProcessFileName = tmpFile;
+                if (File.Exists(oldFile)){
+                    File.Delete(tmpFile);
+                    File.Move(oldFile, tmpFile);
+                }
+                TempProcessFileName = tmpName;
 
                 //將新的進度檔改為當前進度檔
                 File.Move(newFile, oldFile);
 
                 //刪除暫存進度檔
                 File.Delete(tmpFile);
-
 
                 return true;
             }
@@ -67,13 +70,18 @@ namespace HouseCrawlerCSharp.Library
         }
 
         public static void RecoverProcessData(string dir){
-            if(TempProcessFileName == null)
+            if(TempProcessFileName != null)
             {
-                return;
-			}
+                var tmpFile = Path.Combine(dir, TempProcessFileName);
+                if (File.Exists(tmpFile))
+                {
+                    var originFile = Path.Combine(dir, ProcessFileName);
+                    File.Delete(originFile);
+                    File.Move(tmpFile, originFile);
+                }
+            }
 
-            File.Delete(Path.Combine(dir, ProcessFileName));
-            File.Move(Path.Combine(dir, TempProcessFileName), Path.Combine(dir, ProcessFileName));
+            File.Delete(Path.Combine(dir, NewProcessFileName));
 
             TempProcessFileName = null;
         }
