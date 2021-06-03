@@ -91,7 +91,6 @@ namespace HouseCrawlerCSharp
 				keyInfo = Console.ReadKey();
 			}
 		}
-
 		static void KillAllDriverProcess(){
 			var driverName = WebDriverHandler.GetWebDriverFileName();
 			var currProcessId = Process.GetCurrentProcess().Id;

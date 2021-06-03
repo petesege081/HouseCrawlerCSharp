@@ -59,7 +59,7 @@ namespace HouseCrawlerCSharp.WebCrawler.YungChing
 
 		protected override bool CheckHouseExist()
 		{
-			return !Driver.Url.Contains(@"buy.yungching.com.tw/Information/CaseNotFound");
+			return Driver.FindElement(By.XPath("//main[@class='l-body']/*[1]")).GetAttribute("class") != "noData";
 		}
 
 		public override HouseInfo GetHouseInfo(Dictionary<string, object> extras = null)

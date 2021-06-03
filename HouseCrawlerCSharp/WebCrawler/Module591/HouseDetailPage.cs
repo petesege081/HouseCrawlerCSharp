@@ -18,26 +18,17 @@ namespace HouseCrawlerCSharp.WebCrawler._591
 		protected override void WaitForPageLoaded()
 		{
 			//Scroll to bottom, and wait for google map display.
-			Waiter.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementExists(By.Id("detail-map-free")));
+			Waiter.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementExists(By.CssSelector("#container > :first-child")));
 		}
 
 		protected override void AfterPageLoadedEvent()
 		{
-
+			Waiter.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementExists(By.Id("detail-map-free")));
 		}
 
 		protected override bool CheckHouseExist()
 		{
-			try
-			{
-				Driver.FindElement(By.CssSelector(".detail-title-container"));
-				return true;
-			}
-			catch (NoSuchElementException)
-			{
-				
-			}
-			return false;
+			return Driver.FindElement(By.CssSelector("#container > :first-child")).GetAttribute("class") != "error_img";
 		}
 		
 		public override HouseInfo GetHouseInfo(Dictionary<string, object> extras = null)

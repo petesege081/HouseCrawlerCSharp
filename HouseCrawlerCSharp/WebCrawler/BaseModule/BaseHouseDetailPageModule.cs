@@ -32,7 +32,11 @@ namespace HouseCrawlerCSharp.Model
 			//Wait fo page ready
 			WaitForPageLoaded();
 			IsHouseExist = CheckHouseExist();
-			AfterPageLoadedEvent();
+
+			if(IsHouseExist)
+			{
+				AfterPageLoadedEvent();
+			}
 
 			Watcher.Stop();
 			Timer.PageReady = Watcher.ElapsedMilliseconds;
